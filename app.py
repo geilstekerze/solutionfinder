@@ -11,50 +11,69 @@ def get_base64(bin_file):
         data = f.read()
     return base64.b64encode(data).decode()
 
-def set_design():
+# --- PRO-DESIGN (APP ICON & BRUTALIST UI) ---
+def set_pro_design():
     bg_style = ""
-    logo_html = ""
+    logo_base64 = ""
     try:
         if os.path.exists('background.jpg'):
             bg_base64 = get_base64('background.jpg')
-            bg_style = f'background-image: url("data:image/jpg;base64,{bg_base64}"); background-size: cover; background-attachment: fixed;'
+            # Hintergrund mit dezentem weißen Overlay, damit der Text immer lesbar ist
+            bg_style = f'''
+                background: linear-gradient(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4)), 
+                url("data:image/jpg;base64,{bg_base64}");
+                background-size: cover; background-attachment: fixed;
+            '''
         
         if os.path.exists('logo.png'):
             logo_base64 = get_base64('logo.png')
-            logo_html = f'<div style="text-align: center;"><img src="data:image/png;base64,{logo_base64}" width="220"></div>'
     except:
         pass
 
+    # Apple Touch Icon Meta-Tags & CSS
     st.markdown(f'''
+        <head>
+            <link rel="apple-touch-icon" href="data:image/png;base64,{logo_base64}">
+            <meta name="apple-mobile-web-app-capable" content="yes">
+            <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        </head>
         <style>
         .stApp {{ {bg_style} }}
+        /* Eingabemaske im Glossy-Look mit hartem Rand */
         .eingabe-box {{ 
             background-color: rgba(255, 255, 255, 0.95); 
-            padding: 20px; border-radius: 12px; 
-            border: 2px solid #000000; margin-bottom: 20px; 
+            padding: 25px; border-radius: 12px; 
+            border: 3px solid #000000; margin-bottom: 25px;
+            box-shadow: 6px 6px 0px rgba(0,0,0,0.15);
         }}
+        /* Karten mit starkem Kontrast (Brutalist Design) */
         .result-card {{ 
-            background-color: white; padding: 15px; border-radius: 10px; 
+            background-color: #ffffff; padding: 20px; border-radius: 12px; 
             border: 3px solid #000000; text-align: center; height: 100%;
-            box-shadow: 4px 4px 10px rgba(0,0,0,0.3); margin-bottom: 10px;
+            box-shadow: 6px 6px 0px #000000; margin-bottom: 15px;
         }}
-        .roi-card {{ 
-            background-color: #f8f9fa; padding: 15px; border-radius: 10px; 
-            border: 3px solid #000000; text-align: center; height: 100%; 
-            box-shadow: 4px 4px 10px rgba(0,0,0,0.2);
+        .roi-card {{ background-color: #f8f9fa; border: 3px solid #000000; text-align: center; height: 100%; box-shadow: 6px 6px 0px #000000; padding: 15px; border-radius: 12px; }}
+        .esg-card {{ background-color: #ffffff; border: 3px solid #000000; text-align: center; height: 100%; box-shadow: 6px 6px 0px #000000; padding: 15px; border-radius: 12px; }}
+        
+        .metric-title {{ color: #000000; font-weight: 900; font-size: 1.05em; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }}
+        .metric-value {{ font-size: 1.8em; font-weight: 900; color: #000000; }}
+        
+        /* Titel-Styling */
+        .main-title {{ 
+            font-size: 2.5em; font-weight: 900; color: #000000; 
+            text-align: center; margin-top: -15px; margin-bottom: 20px;
+            text-shadow: 2px 2px 0px #ffffff;
+            letter-spacing: -0.5px;
         }}
-        .esg-card {{ 
-            background-color: #ffffff; padding: 15px; border-radius: 10px; 
-            border: 3px solid #000000; text-align: center; height: 100%; 
-            box-shadow: 4px 4px 10px rgba(0,0,0,0.2);
-        }}
-        .metric-title {{ color: #000000; font-weight: bold; font-size: 1.1em; margin-bottom: 5px; text-transform: uppercase; }}
-        .metric-value {{ font-size: 1.7em; font-weight: bold; color: #000000; }}
-        h1, h2, h3 {{ color: #000000; text-shadow: 1px 1px 1px white; font-weight: bold; }}
-        .stButton>button {{ border: 2px solid black !important; color: black !important; font-weight: bold; width: 100%; }}
+        
+        /* Button Styling */
+        .stButton>button {{ border: 3px solid black !important; color: black !important; font-weight: 900; width: 100%; box-shadow: 4px 4px 0px black; transition: all 0.2s; }}
+        .stButton>button:active {{ box-shadow: 0px 0px 0px black; transform: translate(4px, 4px); }}
         </style>
-        {logo_html}
-        <h1 style="text-align: center; margin-top: 0; font-size: 2.5em;">SOLUTIONFINDER</h1>
+        <div style="text-align: center; margin-bottom: 10px;">
+            <img src="data:image/png;base64,{logo_base64}" width="220">
+        </div>
+        <h1 class="main-title">SOLUTIONFINDER</h1>
     ''', unsafe_allow_html=True)
 
 # --- PDF GENERATOR ---
@@ -97,7 +116,7 @@ def create_pdf(v, a, komp, t_p, s_list, tp_m, t_tp, t_gn, t_rp, n_tp, n_gn, n_dk
 
 # --- APP START ---
 st.set_page_config(page_title="Rieber Solutionfinder", layout="wide")
-set_design()
+set_pro_design()
 
 # --- EINGABE ---
 st.markdown('<div class="eingabe-box">', unsafe_allow_html=True)
@@ -113,9 +132,9 @@ for i in range(int(n_loc)):
     total_p += count
     loc_reports.append((name, count))
 
-st.markdown("<hr style='border: 1px solid black;'>", unsafe_allow_html=True)
+st.markdown("<hr style='border: 2px solid black;'>", unsafe_allow_html=True)
 
-# Parameter-Abfrage (Jetzt wieder inkl. Menükomponenten!)
+# Parameter-Abfrage 
 k1, k2, k3 = st.columns(3)
 with k1:
     v_sys = st.selectbox("Verfahren", ["Cook & Chill", "Cook & Hold"])
@@ -167,12 +186,12 @@ co2 = pla * 3.5
 # --- OUTPUT ---
 st.header("BEDARF & INVESTITION")
 r1, r2, r3, r4 = st.columns(4)
-r1.markdown(f'<div class="result-card"><p class="metric-title">{tp_m}</p><p class="metric-value">{t_tp}</p><p>à {n_tp:.2f}€</p></div>', unsafe_allow_html=True)
-r2.markdown(f'<div class="result-card"><p class="metric-title">GN 1/1 65mm</p><p class="metric-value">{t_gn}</p><p>à {n_gn:.2f}€</p></div>', unsafe_allow_html=True)
-r3.markdown(f'<div class="result-card"><p class="metric-title">Steckdeckel</p><p class="metric-value">{t_gn}</p><p>à {n_dk:.2f}€</p></div>', unsafe_allow_html=True)
-r4.markdown(f'<div class="result-card"><p class="metric-title">Rolliport</p><p class="metric-value">{t_rp}</p><p>à {n_rp:.2f}€</p></div>', unsafe_allow_html=True)
+r1.markdown(f'<div class="result-card"><p class="metric-title">{tp_m}</p><p class="metric-value">{t_tp}</p><p style="margin-top: 10px; font-weight: bold;">à {n_tp:.2f}€</p></div>', unsafe_allow_html=True)
+r2.markdown(f'<div class="result-card"><p class="metric-title">GN 1/1 65mm</p><p class="metric-value">{t_gn}</p><p style="margin-top: 10px; font-weight: bold;">à {n_gn:.2f}€</p></div>', unsafe_allow_html=True)
+r3.markdown(f'<div class="result-card"><p class="metric-title">Steckdeckel</p><p class="metric-value">{t_gn}</p><p style="margin-top: 10px; font-weight: bold;">à {n_dk:.2f}€</p></div>', unsafe_allow_html=True)
+r4.markdown(f'<div class="result-card"><p class="metric-title">Rolliport</p><p class="metric-value">{t_rp}</p><p style="margin-top: 10px; font-weight: bold;">à {n_rp:.2f}€</p></div>', unsafe_allow_html=True)
 
-st.markdown(f'<h2 style="text-align: center; color: white; background: black; padding: 15px; border-radius: 12px; border: 2px solid white; box-shadow: 4px 4px 10px rgba(0,0,0,0.5);">Gesamtinvestition: {inv:,.2f} € Netto</h2>', unsafe_allow_html=True)
+st.markdown(f'<h2 style="text-align: center; color: white; background: black; padding: 20px; border-radius: 12px; border: 3px solid #000000; box-shadow: 6px 6px 0px rgba(0,0,0,0.5); font-weight: 900; margin-top: 20px; margin-bottom: 30px;">Gesamtinvestition: {inv:,.2f} € Netto</h2>', unsafe_allow_html=True)
 
 st.header("ROI & NACHHALTIGKEIT")
 o1, o2, o3, o4 = st.columns(4)
