@@ -23,12 +23,13 @@ def set_pro_design():
         
         if os.path.exists('logo.png'):
             logo_base64 = get_base64('logo.png')
-            logo_html = f'<div style="text-align: center; margin-bottom: 10px;"><img src="data:image/png;base64,{logo_base64}" width="220"></div>'
+            # Logo jetzt UNTER dem Titel platziert
+            logo_html = f'<div style="text-align: center; margin-bottom: 20px;"><img src="data:image/png;base64,{logo_base64}" width="220"></div>'
             apple_icon = f'<link rel="apple-touch-icon" href="data:image/png;base64,{logo_base64}">'
     except:
         pass
 
-    # Komprimiertes CSS ohne Leerzeilen, um Streamlit-Bugs zu vermeiden!
+    # UI-Reihenfolge: Erst Titel, dann Logo
     st.markdown(f'''
         {apple_icon}
         <style>
@@ -39,12 +40,12 @@ def set_pro_design():
         .esg-card {{ background-color: #ffffff; border: 3px solid #000000; text-align: center; height: 100%; box-shadow: 6px 6px 0px #000000; padding: 15px; border-radius: 12px; }}
         .metric-title {{ color: #000000; font-weight: 900; font-size: 1.05em; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }}
         .metric-value {{ font-size: 1.8em; font-weight: 900; color: #000000; }}
-        .main-title {{ font-size: 2.5em; font-weight: 900; color: #000000; text-align: center; margin-top: -15px; margin-bottom: 20px; text-shadow: 2px 2px 0px #ffffff; letter-spacing: -0.5px; }}
+        .main-title {{ font-size: 2.5em; font-weight: 900; color: #000000; text-align: center; margin-top: -15px; margin-bottom: 5px; text-shadow: 2px 2px 0px #ffffff; letter-spacing: -0.5px; }}
         .stButton>button {{ border: 3px solid black !important; color: black !important; font-weight: 900; width: 100%; box-shadow: 4px 4px 0px black; transition: all 0.2s; }}
         .stButton>button:active {{ box-shadow: 0px 0px 0px black; transform: translate(4px, 4px); }}
         </style>
-        {logo_html}
         <h1 class="main-title">SOLUTIONFINDER</h1>
+        {logo_html}
     ''', unsafe_allow_html=True)
 
 # --- PDF GENERATOR ---
@@ -85,7 +86,8 @@ def create_pdf(v, a, komp, t_p, s_list, tp_m, t_tp, t_gn, t_rp, n_tp, n_gn, n_dk
     return pdf.output(dest='S').encode('latin-1')
 
 # --- APP START ---
-st.set_page_config(page_title="Rieber Solutionfinder", layout="wide")
+# Favicon auf das Rieber Logo gesetzt
+st.set_page_config(page_title="Rieber Solutionfinder", layout="wide", page_icon="logo.png" if os.path.exists("logo.png") else None)
 set_pro_design()
 
 # --- EINGABE ---
