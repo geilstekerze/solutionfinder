@@ -24,155 +24,182 @@ def inject_apple_icon():
                         l.href = 'data:image/jpeg;base64,{b64}';
                         p.head.appendChild(l);
                     }}
-                    var m = p.createElement('meta');
-                    m.name = 'mobile-web-app-capable';
-                    m.content = 'yes';
-                    p.head.appendChild(m);
-                    var m2 = p.createElement('meta');
-                    m2.name = 'apple-mobile-web-app-capable';
-                    m2.content = 'yes';
-                    p.head.appendChild(m2);
-                    var m3 = p.createElement('meta');
-                    m3.name = 'apple-mobile-web-app-title';
-                    m3.content = 'Solutionfinder';
-                    p.head.appendChild(m3);
+                    [['mobile-web-app-capable','yes'],
+                     ['apple-mobile-web-app-capable','yes'],
+                     ['apple-mobile-web-app-title','Solutionfinder']
+                    ].forEach(function(d) {{
+                        var m = p.createElement('meta');
+                        m.name = d[0]; m.content = d[1];
+                        p.head.appendChild(m);
+                    }});
                 }})();
                 </script>
             """, height=0)
         except:
             pass
 
-def set_design():
-    st.markdown('''
-        <style>
-        .stApp { background-color: #f0f2f5; }
-        .block-container { padding-top: 1.5rem !important; }
+def get_logo_html(height="75px"):
+    for fname in ['Logo.png', 'Logo.jpg', 'Logo.jpeg', 'logo.png', 'logo.jpg']:
+        if os.path.exists(fname):
+            try:
+                ext = fname.rsplit('.', 1)[1].lower()
+                mime = 'jpeg' if ext in ('jpg', 'jpeg') else 'png'
+                b64 = get_base64(fname)
+                return (f'<img src="data:image/{mime};base64,{b64}" '
+                        f'style="height:{height};max-width:300px;'
+                        f'object-fit:contain;display:block;margin:0 auto;">')
+            except:
+                pass
+    # SVG-Fallback bis Logo.png hochgeladen wird
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370 118" '
+            f'style="height:{height};display:block;margin:0 auto;">'
+            f'<text x="4" y="82" font-family="Arial Black,Arial,sans-serif" '
+            f'font-weight="900" font-style="italic" font-size="86" fill="#E8471C">Rieber</text>'
+            f'<text x="10" y="112" font-family="Arial,sans-serif" font-weight="300" '
+            f'font-size="19" fill="#aaaaaa" letter-spacing="7">M E T A  cooking</text>'
+            f'</svg>')
 
-        /* Header / Logo */
-        .rieber-header {
+HIDE_ST = """
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
+    .stDeployButton { display: none !important; }
+    header[data-testid="stHeader"] { background: transparent; }
+    [data-testid="manage-app-button"] { display: none !important; }
+"""
+
+FORM_BORDERS = """
+    div[data-baseweb="select"] > div {
+        border: 2px solid #E8471C !important;
+        border-radius: 10px !important;
+        background-color: white !important;
+    }
+    div[data-baseweb="input"] > div {
+        border: 2px solid #E8471C !important;
+        border-radius: 10px !important;
+        background-color: white !important;
+    }
+    div[data-baseweb="base-input"] { background-color: white !important; }
+    div[data-baseweb="select"] > div:focus-within,
+    div[data-baseweb="input"] > div:focus-within {
+        border-color: #E8471C !important;
+        box-shadow: 0 0 0 2px rgba(232,71,28,0.15) !important;
+    }
+"""
+
+def set_design():
+    logo_html = get_logo_html("75px")
+    st.markdown(f'''
+        <style>
+        {HIDE_ST}
+        .stApp {{ background-color: #f0f2f5; }}
+        .block-container {{ padding-top: 1.5rem !important; }}
+
+        .rieber-header {{
             background: white; text-align: center;
-            padding: 24px 20px 20px; border-radius: 16px;
+            padding: 28px 20px 22px; border-radius: 16px;
             margin-bottom: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.07);
-        }
-        .logo-rieber {
-            font-size: 3em; font-weight: 900; color: #E8471C;
-            line-height: 1; font-style: italic; letter-spacing: -1px;
-        }
-        .logo-sub {
-            font-size: 0.75em; letter-spacing: 0.28em; color: #aaa;
-            font-weight: 400; text-transform: uppercase;
-            display: block; margin-top: 4px;
-        }
-        .app-name {
+        }}
+        .app-name {{
             font-size: 1.05em; font-weight: 700; color: #333;
             letter-spacing: 0.1em; text-transform: uppercase;
-            margin-top: 14px; padding-top: 14px;
-            border-top: 1px solid #f0f0f0;
-        }
-
-        /* Input box */
-        .eingabe-box {
+            margin-top: 16px; padding-top: 14px; border-top: 1px solid #f0f0f0;
+        }}
+        .eingabe-box {{
             background: #fff; padding: 28px; border-radius: 16px;
             border: none; margin-bottom: 24px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.07);
-        }
-
-        /* Section labels */
-        .section-label {
+        }}
+        .section-label {{
             font-size: 0.75em; font-weight: 700; letter-spacing: 0.15em;
             color: #999; text-transform: uppercase; margin: 8px 0 4px;
-        }
-
-        /* Result cards */
-        .result-card {
+        }}
+        {FORM_BORDERS}
+        .result-card {{
             background: #fff; padding: 22px 16px; border-radius: 16px;
-            border: none; text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.07); margin-bottom: 16px;
-        }
-        .metric-title {
+            border: 2px solid #E8471C; text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 16px;
+        }}
+        .metric-title {{
             color: #888; font-weight: 600; font-size: 0.82em;
             margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.6px;
-        }
-        .metric-value {
-            font-size: 2.4em; font-weight: 800; color: #1a1a1a; line-height: 1;
-        }
-        .metric-price {
-            font-size: 0.92em; color: #E8471C; font-weight: 600; margin-top: 10px;
-        }
-
-        /* Total investment */
-        .total-card {
+        }}
+        .metric-value {{ font-size: 2.4em; font-weight: 800; color: #1a1a1a; line-height: 1; }}
+        .metric-price {{ font-size: 0.92em; color: #E8471C; font-weight: 600; margin-top: 10px; }}
+        .total-card {{
             background: #E8471C; color: white; text-align: center;
             padding: 22px 24px; border-radius: 16px; margin: 20px 0 28px;
-        }
-        .total-label {
+        }}
+        .total-label {{
             font-size: 0.82em; font-weight: 600; letter-spacing: 0.12em;
             text-transform: uppercase; opacity: 0.9; margin-bottom: 6px;
-        }
-        .total-value { font-size: 2.2em; font-weight: 900; }
-
-        /* ROI / ESG cards */
-        .roi-card, .esg-card {
-            background: #fff; border: none; text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.07);
-            padding: 20px 16px; border-radius: 16px;
-        }
-
-        /* Download button */
-        .stDownloadButton > button, .stButton > button {
-            background-color: #E8471C !important;
-            color: white !important; font-weight: 700 !important;
-            width: 100% !important; border: none !important;
-            border-radius: 12px !important; padding: 14px 24px !important;
-            font-size: 1em !important; letter-spacing: 0.04em !important;
+        }}
+        .total-value {{ font-size: 2.2em; font-weight: 900; }}
+        .roi-card, .esg-card {{
+            background: #fff; border: 2px solid #E8471C; text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            padding: 20px 16px; border-radius: 16px; margin-bottom: 12px;
+        }}
+        .card-icon {{ font-size: 2em; margin-bottom: 6px; line-height: 1.2; }}
+        .stDownloadButton > button, .stButton > button {{
+            background-color: #E8471C !important; color: white !important;
+            font-weight: 700 !important; width: 100% !important;
+            border: none !important; border-radius: 12px !important;
+            padding: 14px 24px !important; font-size: 1em !important;
+            letter-spacing: 0.04em !important;
             box-shadow: 0 4px 12px rgba(232,71,28,0.3) !important;
-            transition: all 0.2s !important;
-        }
-        .stDownloadButton > button:hover, .stButton > button:hover {
-            box-shadow: 0 6px 18px rgba(232,71,28,0.4) !important;
-            transform: translateY(-1px) !important;
-        }
+        }}
         </style>
-
         <div class="rieber-header">
-            <div class="logo-rieber">Rieber</div>
-            <span class="logo-sub">M E T A &nbsp; c o o k i n g</span>
+            {logo_html}
             <div class="app-name">Solution<strong>finder</strong></div>
         </div>
     ''', unsafe_allow_html=True)
 
 
-def create_pdf(v, a, komp, t_p, s_list, tp_m, t_tp, t_gn, t_rp, n_tp, n_gn, n_dk, n_rp, inv, e_j, a_m, p_j, c_j):
+def create_pdf(v, a, komp, t_p, s_list, tp_m, t_tp, t_gn, t_rp,
+               n_tp, n_gn, n_dk, n_rp, inv, e_j, a_m, p_j, c_j, kunde=""):
     pdf = FPDF()
     pdf.add_page()
 
-    # Logo header
-    pdf.set_font("Arial", 'BI', 24)
-    pdf.set_text_color(232, 71, 28)
-    pdf.cell(55, 12, txt="Rieber", ln=False, align='L')
-    pdf.set_font("Arial", '', 9)
-    pdf.set_text_color(170, 170, 170)
-    pdf.cell(0, 12, txt="M E T A   c o o k i n g", ln=True, align='L')
+    # Logo
+    logo_added = False
+    for fname in ['Logo.png', 'Logo.jpg', 'Logo.jpeg', 'logo.png']:
+        if os.path.exists(fname):
+            try:
+                pdf.image(fname, x=10, y=10, h=18)
+                pdf.ln(24)
+                logo_added = True
+                break
+            except:
+                pass
+    if not logo_added:
+        pdf.set_font("Arial", 'BI', 24)
+        pdf.set_text_color(232, 71, 28)
+        pdf.cell(55, 12, txt="Rieber", ln=False)
+        pdf.set_font("Arial", '', 9)
+        pdf.set_text_color(170, 170, 170)
+        pdf.cell(0, 12, txt="M E T A   c o o k i n g", ln=True)
 
     pdf.set_draw_color(232, 71, 28)
     pdf.set_line_width(0.7)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(4)
 
-    # Title
     pdf.set_font("Arial", 'B', 13)
     pdf.set_text_color(30, 30, 30)
     pdf.cell(0, 8, txt="SOLUTIONFINDER - Bedarfsanalyse", ln=True)
+    if kunde:
+        pdf.set_font("Arial", '', 11)
+        pdf.set_text_color(80, 80, 80)
+        pdf.cell(0, 7, txt=f"Kunde: {kunde}", ln=True)
     pdf.ln(5)
 
-    # Inputs
     pdf.set_font("Arial", '', 11)
     pdf.set_text_color(80, 80, 80)
     pdf.cell(0, 7, txt=f"Verfahren: {v}  |  Bereich: {a}", ln=True)
     pdf.cell(0, 7, txt=f"Menuekomponenten: {komp}  |  Teilnehmer gesamt: {t_p}", ln=True)
     pdf.ln(5)
 
-    # Stueckliste
     pdf.set_font("Arial", 'B', 11)
     pdf.set_text_color(30, 30, 30)
     pdf.cell(0, 8, txt="Detaillierte Stueckliste (Netto-Einzelpreise):", ln=True)
@@ -184,14 +211,12 @@ def create_pdf(v, a, komp, t_p, s_list, tp_m, t_tp, t_gn, t_rp, n_tp, n_gn, n_dk
     pdf.cell(0, 6, txt=f"  {t_rp}x  Rolliport  (a {n_rp:,.2f} EUR)", ln=True)
     pdf.ln(5)
 
-    # Total (orange banner)
     pdf.set_font("Arial", 'B', 12)
     pdf.set_fill_color(232, 71, 28)
     pdf.set_text_color(255, 255, 255)
     pdf.cell(0, 11, txt=f"  Gesamtinvestition: {inv:,.2f} EUR Netto", ln=True, fill=True)
     pdf.ln(5)
 
-    # Business case
     pdf.set_font("Arial", 'B', 11)
     pdf.set_text_color(30, 30, 30)
     pdf.cell(0, 8, txt="Business Case & Nachhaltigkeit:", ln=True)
@@ -205,45 +230,49 @@ def create_pdf(v, a, komp, t_p, s_list, tp_m, t_tp, t_gn, t_rp, n_tp, n_gn, n_dk
 
 
 # --- APP ---
-st.set_page_config(page_title="Rieber Solutionfinder", page_icon="🍽️", layout="wide")
+st.set_page_config(
+    page_title="Rieber Solutionfinder",
+    page_icon="🍽️",
+    layout="wide",
+    menu_items={'Get Help': None, 'Report a bug': None, 'About': '© Rieber GmbH'}
+)
 inject_apple_icon()
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    st.markdown('''
+    logo_html = get_logo_html("70px")
+    st.markdown(f'''
         <style>
-        .stApp { background-color: #f0f2f5; }
-        .login-box {
-            max-width: 380px; margin: 80px auto 0; background: white;
-            padding: 40px; border-radius: 20px;
+        {HIDE_ST}
+        .stApp {{ background-color: #f0f2f5; }}
+        .login-wrap {{
+            max-width: 380px; margin: 60px auto 0; background: white;
+            padding: 40px 36px; border-radius: 20px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center;
-        }
-        .login-logo { font-size: 2.8em; font-weight: 900; color: #E8471C;
-            font-style: italic; letter-spacing: -1px; }
-        .login-sub { font-size: 0.75em; letter-spacing: 0.28em; color: #aaa;
-            text-transform: uppercase; display: block; margin-top: 4px; }
-        .login-title { font-size: 1em; font-weight: 700; color: #333;
+        }}
+        .login-title {{
+            font-size: 1em; font-weight: 700; color: #333;
             letter-spacing: 0.1em; text-transform: uppercase;
-            margin-top: 14px; padding-top: 14px; border-top: 1px solid #f0f0f0; }
-        .stTextInput > div > div > input { border-radius: 10px !important; }
-        .stButton > button {
+            margin-top: 16px; padding-top: 14px; border-top: 1px solid #f0f0f0;
+        }}
+        {FORM_BORDERS}
+        .stButton > button {{
             background-color: #E8471C !important; color: white !important;
             font-weight: 700 !important; width: 100% !important;
             border: none !important; border-radius: 12px !important;
-            padding: 12px 24px !important; font-size: 1em !important;
+            padding: 12px 24px !important;
             box-shadow: 0 4px 12px rgba(232,71,28,0.3) !important;
-        }
+        }}
         </style>
-        <div class="login-box">
-            <div class="login-logo">Rieber</div>
-            <span class="login-sub">M E T A &nbsp; c o o k i n g</span>
+        <div class="login-wrap">
+            {logo_html}
             <div class="login-title">Solutionfinder</div>
         </div>
     ''', unsafe_allow_html=True)
-    pw = st.text_input("Passwort", type="password", label_visibility="collapsed",
-                        placeholder="Passwort eingeben …")
+    pw = st.text_input("pw", type="password", label_visibility="collapsed",
+                       placeholder="Passwort eingeben …")
     if st.button("Anmelden"):
         if pw == "Rieber":
             st.session_state.authenticated = True
@@ -256,6 +285,7 @@ set_design()
 
 # --- EINGABE ---
 st.markdown('<div class="eingabe-box">', unsafe_allow_html=True)
+kunde = st.text_input("Kundenname", placeholder="z. B. Muster GmbH")
 n_loc = st.number_input("Anzahl Standorte", min_value=1, value=1)
 total_p = 0
 loc_reports = []
@@ -267,7 +297,8 @@ for i in range(int(n_loc)):
     total_p += count
     loc_reports.append((name, count))
 
-st.markdown("<hr style='border:none;border-top:1px solid #f0f0f0;margin:16px 0;'>", unsafe_allow_html=True)
+st.markdown("<hr style='border:none;border-top:1px solid #f0f0f0;margin:16px 0;'>",
+            unsafe_allow_html=True)
 
 k1, k2, k3 = st.columns(3)
 with k1:
@@ -346,22 +377,28 @@ st.markdown(f'''<div class="total-card">
 st.markdown('<p class="section-label">ROI &amp; Nachhaltigkeit</p>', unsafe_allow_html=True)
 o1, o2, o3, o4 = st.columns(4)
 o1.markdown(f'''<div class="roi-card">
+    <div class="card-icon">♻️</div>
     <p class="metric-title">Einweg / Jahr</p>
     <p class="metric-value" style="color:#d9534f;">{roi_j:,.0f} €</p>
 </div>''', unsafe_allow_html=True)
 o2.markdown(f'''<div class="roi-card">
+    <div class="card-icon">🪙</div>
     <p class="metric-title">Amortisation</p>
     <p class="metric-value">{amo:.1f} <span style="font-size:0.45em;color:#888;font-weight:600;">Mon.</span></p>
 </div>''', unsafe_allow_html=True)
 o3.markdown(f'''<div class="esg-card">
+    <div class="card-icon">🥤</div>
     <p class="metric-title">Plastik gespart</p>
     <p class="metric-value" style="color:#2a9d8f;">{pla:,.0f} <span style="font-size:0.45em;color:#888;font-weight:600;">kg/J.</span></p>
 </div>''', unsafe_allow_html=True)
 o4.markdown(f'''<div class="esg-card">
-    <p class="metric-title">CO2 reduziert</p>
+    <div class="card-icon">🌫️</div>
+    <p class="metric-title">CO₂ reduziert</p>
     <p class="metric-value" style="color:#2a9d8f;">{co2:,.0f} <span style="font-size:0.45em;color:#888;font-weight:600;">kg/J.</span></p>
 </div>''', unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
-pdf_b = create_pdf(v_sys, bereich, komp, total_p, loc_reports, tp_m, t_tp, t_gn, t_rp, n_tp, n_gn, n_dk, n_rp, inv, roi_j, amo, pla, co2)
-st.download_button("Angebot als PDF speichern", data=pdf_b, file_name="Rieber_Bedarfsanalyse.pdf", mime="application/pdf")
+pdf_b = create_pdf(v_sys, bereich, komp, total_p, loc_reports, tp_m, t_tp, t_gn, t_rp,
+                   n_tp, n_gn, n_dk, n_rp, inv, roi_j, amo, pla, co2, kunde)
+st.download_button("Bedarfsanalyse als PDF speichern", data=pdf_b,
+                   file_name="Rieber_Bedarfsanalyse.pdf", mime="application/pdf")
