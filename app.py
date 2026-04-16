@@ -21,15 +21,14 @@ def set_pro_design():
             bg_base64 = get_base64('background.jpg')
             bg_style = f'background: linear-gradient(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4)), url("data:image/jpg;base64,{bg_base64}"); background-size: cover; background-attachment: fixed;'
         
-        if os.path.exists('logo.png'):
-            logo_base64 = get_base64('logo.png')
-            # Logo jetzt UNTER dem Titel platziert
-            logo_html = f'<div style="text-align: center; margin-bottom: 20px;"><img src="data:image/png;base64,{logo_base64}" width="220"></div>'
-            apple_icon = f'<link rel="apple-touch-icon" href="data:image/png;base64,{logo_base64}">'
+        # HIER WURDE DER NAME UND DAS FORMAT ANGEPASST:
+        if os.path.exists('Solutionfinder.jpeg'):
+            logo_base64 = get_base64('Solutionfinder.jpeg')
+            logo_html = f'<div style="text-align: center; margin-bottom: 20px;"><img src="data:image/jpeg;base64,{logo_base64}" width="220"></div>'
+            apple_icon = f'<link rel="apple-touch-icon" href="data:image/jpeg;base64,{logo_base64}">'
     except:
         pass
 
-    # UI-Reihenfolge: Erst Titel, dann Logo
     st.markdown(f'''
         {apple_icon}
         <style>
@@ -52,7 +51,8 @@ def set_pro_design():
 def create_pdf(v, a, komp, t_p, s_list, tp_m, t_tp, t_gn, t_rp, n_tp, n_gn, n_dk, n_rp, inv, e_j, a_m, p_j, c_j):
     pdf = FPDF()
     pdf.add_page()
-    if os.path.exists('logo.png'): pdf.image('logo.png', 10, 8, 45)
+    # HIER EBENFALLS ANGEPASST:
+    if os.path.exists('Solutionfinder.jpeg'): pdf.image('Solutionfinder.jpeg', 10, 8, 45)
     pdf.ln(20)
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, txt="Rieber Solutionfinder - Bedarfsanalyse", ln=True, align='C')
@@ -86,8 +86,7 @@ def create_pdf(v, a, komp, t_p, s_list, tp_m, t_tp, t_gn, t_rp, n_tp, n_gn, n_dk
     return pdf.output(dest='S').encode('latin-1')
 
 # --- APP START ---
-# Favicon auf das Rieber Logo gesetzt
-st.set_page_config(page_title="Rieber Solutionfinder", layout="wide", page_icon="logo.png" if os.path.exists("logo.png") else None)
+st.set_page_config(page_title="Rieber Solutionfinder", layout="wide", page_icon="Solutionfinder.jpeg" if os.path.exists("Solutionfinder.jpeg") else None)
 set_pro_design()
 
 # --- EINGABE ---
