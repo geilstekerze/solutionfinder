@@ -3,22 +3,25 @@ import streamlit.components.v1 as components
 import math
 import base64
 import os
+import uuid
 from fpdf import FPDF
 
 # ==========================================
-# 1. BASIS-FUNKTIONEN & CSS (ORIGINAL)
+# 1. BASIS-FUNKTIONEN & CSS
 # ==========================================
 
 def get_base64(bin_file):
-   with open(bin_file, 'rb') as f:
-       data = f.read()
-   return base64.b64encode(data).decode()
+    if not os.path.exists(bin_file):
+        return ""
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
 
 def inject_apple_icon():
-   if os.path.exists('Solutionfinder.jpeg'):
-       try:
-           b64 = get_base64('Solutionfinder.jpeg')
-           components.html(f"""<script>
+    if os.path.exists('Solutionfinder.jpeg'):
+        try:
+            b64 = get_base64('Solutionfinder.jpeg')
+            components.html(f"""<script>
 (function(){{
 var p=parent.document;
 if(!p.querySelector('link[rel="apple-touch-icon"]')){{
@@ -31,41 +34,41 @@ if(!p.querySelector('link[rel="apple-touch-icon"]')){{
 }});
 }})();
 </script>""", height=0)
-       except:
-           pass
+        except:
+            pass
 
 LOGO_FILES = ['Logo.png', 'Logo.jpg', 'Logo.jpeg', 'logo.png']
 
 def find_logo():
-   for f in LOGO_FILES:
-       if os.path.exists(f):
-           return f
-   return None
+    for f in LOGO_FILES:
+        if os.path.exists(f):
+            return f
+    return None
 
 def get_logo_html(height="75px"):
-   logo = find_logo()
-   if logo:
-       try:
-           ext = logo.rsplit('.', 1)[1].lower()
-           mime = 'jpeg' if ext in ('jpg', 'jpeg') else 'png'
-           b64 = get_base64(logo)
-           return (
-               '<div style="text-align:center;margin-bottom:4px;">'
-               f'<img src="data:image/{mime};base64,{b64}" '
-               f'style="height:{height};object-fit:contain;">'
-               '</div>'
-           )
-       except:
-           pass
-   return (
-       f'<div style="text-align:center;margin-bottom:4px;">'
-       f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370 118" style="height:{height};">'
-       '<text x="4" y="82" font-family="Arial Black,Arial,sans-serif" '
-       'font-weight="900" font-style="italic" font-size="86" fill="#E8471C">Rieber</text>'
-       '<text x="10" y="112" font-family="Arial,sans-serif" font-weight="300" '
-       'font-size="19" fill="#aaaaaa" letter-spacing="7">M E T A  cooking</text>'
-       '</svg></div>'
-   )
+    logo = find_logo()
+    if logo:
+        try:
+            ext = logo.rsplit('.', 1)[1].lower()
+            mime = 'jpeg' if ext in ('jpg', 'jpeg') else 'png'
+            b64 = get_base64(logo)
+            return (
+                '<div style="text-align:center;margin-bottom:4px;">'
+                f'<img src="data:image/{mime};base64,{b64}" '
+                f'style="height:{height};object-fit:contain;">'
+                '</div>'
+            )
+        except:
+            pass
+    return (
+        f'<div style="text-align:center;margin-bottom:4px;">'
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370 118" style="height:{height};">'
+        '<text x="4" y="82" font-family="Arial Black,Arial,sans-serif" '
+        'font-weight="900" font-style="italic" font-size="86" fill="#E8471C">Rieber</text>'
+        '<text x="10" y="112" font-family="Arial,sans-serif" font-weight="300" '
+        'font-size="19" fill="#aaaaaa" letter-spacing="7">M E T A  cooking</text>'
+        '</svg></div>'
+    )
 
 CSS = (
 "#MainMenu{visibility:hidden;}"
@@ -83,282 +86,130 @@ CSS = (
 "border-radius:10px!important;background-color:white!important;}"
 "div[data-baseweb='input']>div{border:2px solid #E8471C!important;"
 "border-radius:10px!important;background-color:white!important;}"
-"div[data-baseweb='base-input']{background-color:white!important;}"
 ".result-card{background:#fff;padding:22px 16px;border-radius:16px;"
 "border:2px solid #E8471C;text-align:center;"
 "box-shadow:0 2px 8px rgba(0,0,0,0.05);margin-bottom:16px;}"
 ".metric-title{color:#888;font-weight:600;font-size:.82em;margin-bottom:8px;"
 "text-transform:uppercase;letter-spacing:.6px;}"
 ".metric-value{font-size:2.4em;font-weight:800;color:#1a1a1a;line-height:1;}"
-".metric-price{font-size:.92em;color:#E8471C;font-weight:600;margin-top:10px;}"
 ".total-card{background:#E8471C;color:white;text-align:center;"
 "padding:22px 24px;border-radius:16px;margin:20px 0 28px;}"
-".total-label{font-size:.82em;font-weight:600;letter-spacing:.12em;"
-"text-transform:uppercase;opacity:.9;margin-bottom:6px;}"
 ".total-value{font-size:2.2em;font-weight:900;}"
 ".roi-card,.esg-card{background:#fff;border:2px solid #E8471C;text-align:center;"
-"box-shadow:0 2px 8px rgba(0,0,0,0.05);padding:20px 16px;"
-"border-radius:16px;margin-bottom:12px;}"
-".card-icon{font-size:2em;margin-bottom:6px;line-height:1.2;}"
+"box-shadow:0 2px 8px rgba(0,0,0,0.05);padding:20px 16px;border-radius:16px;margin-bottom:12px;}"
 ".stDownloadButton>button,.stButton>button{background-color:#E8471C!important;"
 "color:white!important;font-weight:700!important;width:100%!important;"
-"border:none!important;border-radius:12px!important;padding:14px 24px!important;"
-"font-size:1em!important;box-shadow:0 4px 12px rgba(232,71,28,.3)!important;}"
+"border:none!important;border-radius:12px!important;padding:14px 24px!important;}"
+".plan-container { display: flex; flex-direction: row; align-items: stretch; justify-content: flex-start; overflow-x: auto; padding: 20px; background: #fff; border: 2px dashed #ccc; border-radius: 16px; margin-top: 10px; }"
+".plan-module { position: relative; border: 2px solid #1a1a1a; margin-right: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.8em; text-align: center; border-radius: 8px; box-shadow: 2px 2px 0px rgba(0,0,0,0.1); min-height: 100px; }"
+".plan-rutsche { position: absolute; bottom: -8px; left: 0; right: 0; height: 5px; background: #E8471C; border-radius: 2px; }"
+".plan-abdeckung { position: absolute; bottom: -12px; left: 0; right: 0; height: 10px; background: #333; border-radius: 2px; }"
 )
 
-def set_design():
+def set_design(title_suffix=""):
    logo_html = get_logo_html("75px")
    header = (
        '<div style="background:white;text-align:center;padding:28px 20px 20px;'
        'border-radius:16px;margin-bottom:24px;box-shadow:0 2px 10px rgba(0,0,0,0.07);">'
        + logo_html +
-       '<p style="font-size:1.05em;font-weight:700;color:#333;letter-spacing:0.1em;'
-       'text-transform:uppercase;margin-top:16px;padding-top:14px;'
-       'border-top:1px solid #f0f0f0;">Solution<strong>finder</strong></p>'
+       f'<p style="font-size:1.05em;font-weight:700;color:#333;letter-spacing:0.1em;'
+       f'text-transform:uppercase;margin-top:16px;padding-top:14px;'
+       f'border-top:1px solid #f0f0f0;">Solution<strong>finder</strong> {title_suffix}</p>'
        '</div>'
    )
    st.markdown(f'<style>{CSS}</style>' + header, unsafe_allow_html=True)
-
 
 # ==========================================
 # 2. PDF GENERATOREN
 # ==========================================
 
-# ORIGINAL SOLUTIONFINDER PDF
-def create_pdf(v, a, komp, t_p, tage, s_list, tp_m, t_tp, t_gn, t_rp,
-              n_tp, n_gn, n_dk, n_rp, inv, e_j, a_m, p_j, c_j, kunde=""):
+def create_pdf_solutionfinder(v, a, komp, t_p, tage, s_list, tp_m, t_tp, t_gn, t_rp, n_tp, n_gn, n_dk, n_rp, inv, e_j, a_m, p_j, c_j, kunde=""):
    pdf = FPDF()
    pdf.add_page()
-
    logo = find_logo()
    if logo:
-       try:
-           pdf.image(logo, x=10, y=10, h=18)
-           pdf.ln(24)
-           logo = True
-       except:
-           logo = None
-   if not logo:
-       pdf.set_font("Arial", 'BI', 24)
-       pdf.set_text_color(232, 71, 28)
-       pdf.cell(55, 12, txt="Rieber", ln=False)
-       pdf.set_font("Arial", '', 9)
-       pdf.set_text_color(170, 170, 170)
-       pdf.cell(0, 12, txt="M E T A   c o o k i n g", ln=True)
-
-   pdf.set_draw_color(232, 71, 28)
-   pdf.set_line_width(0.7)
-   pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-   pdf.ln(4)
-
-   pdf.set_font("Arial", 'B', 13)
-   pdf.set_text_color(30, 30, 30)
-   pdf.cell(0, 8, txt="SOLUTIONFINDER - Bedarfsanalyse", ln=True)
-   pdf.ln(3)
-
-   if kunde:
-       pdf.set_font("Arial", 'B', 11)
-       pdf.set_text_color(30, 30, 30)
-       pdf.cell(0, 7, txt=f"Kunde: {kunde}", ln=True)
-
-   pdf.set_font("Arial", '', 11)
-   pdf.set_text_color(80, 80, 80)
-   pdf.cell(0, 7, txt=f"Verfahren: {v}  |  Bereich: {a}", ln=True)
-   pdf.cell(0, 7, txt=f"Menuekomponenten: {komp}  |  Tage/Woche: {tage}", ln=True)
-   pdf.ln(4)
-
-   pdf.set_font("Arial", 'B', 11)
-   pdf.set_text_color(30, 30, 30)
-   pdf.cell(0, 7, txt=f"Standorte ({len(s_list)}):", ln=True)
-   pdf.set_font("Arial", '', 11)
-   pdf.set_text_color(60, 60, 60)
-   for loc_name, loc_count in s_list:
-       pdf.cell(0, 6, txt=f"  - {loc_name}: {loc_count} Teilnehmer", ln=True)
-   pdf.set_font("Arial", 'B', 11)
-   pdf.set_text_color(30, 30, 30)
-   pdf.cell(0, 7, txt=f"  Gesamt: {t_p} Teilnehmer", ln=True)
-   pdf.ln(4)
-
-   pdf.set_font("Arial", 'B', 11)
-   pdf.set_text_color(30, 30, 30)
-   pdf.cell(0, 8, txt="Detaillierte Stueckliste (Netto-Einzelpreise):", ln=True)
-   pdf.set_font("Arial", '', 11)
-   pdf.set_text_color(60, 60, 60)
-   pdf.cell(0, 6, txt=f"  {t_tp}x  {tp_m}  (a {n_tp:,.2f} EUR)", ln=True)
-   pdf.cell(0, 6, txt=f"  {t_gn}x  GN-Behaelter 1/1 65mm  (a {n_gn:,.2f} EUR)", ln=True)
-   pdf.cell(0, 6, txt=f"  {t_gn}x  GN-Steckdeckel  (a {n_dk:,.2f} EUR)", ln=True)
-   pdf.cell(0, 6, txt=f"  {t_rp}x  Rolliport  (a {n_rp:,.2f} EUR)", ln=True)
-   pdf.ln(5)
-
-   pdf.set_font("Arial", 'B', 12)
-   pdf.set_fill_color(232, 71, 28)
-   pdf.set_text_color(255, 255, 255)
-   pdf.cell(0, 11, txt=f"  Gesamtinvestition: {inv:,.2f} EUR Netto", ln=True, fill=True)
-   pdf.ln(5)
-
-   pdf.set_font("Arial", 'B', 11)
-   pdf.set_text_color(30, 30, 30)
-   pdf.cell(0, 8, txt="Business Case & Nachhaltigkeit:", ln=True)
-   pdf.set_font("Arial", '', 11)
-   pdf.set_text_color(60, 60, 60)
-   pdf.cell(0, 6, txt=f"  Amortisation:          ca. {a_m:.1f} Monate", ln=True)
-   pdf.cell(0, 6, txt=f"  Eingespartes Plastik:  {p_j:,.0f} kg / Jahr", ln=True)
-   pdf.cell(0, 6, txt=f"  CO2-Reduktion:         {c_j:,.0f} kg / Jahr", ln=True)
-
+       try: pdf.image(logo, x=10, y=10, h=18); pdf.ln(24)
+       except: pass
+   pdf.set_font("Arial", 'B', 13); pdf.cell(0, 8, txt="SOLUTIONFINDER - Bedarfsanalyse", ln=True); pdf.ln(3)
+   if kunde: pdf.set_font("Arial", 'B', 11); pdf.cell(0, 7, txt=f"Kunde: {kunde}", ln=True)
+   pdf.set_font("Arial", '', 10); pdf.cell(0, 6, txt=f"Verfahren: {v} | Bereich: {a}", ln=True); pdf.ln(4)
+   pdf.set_font("Arial", 'B', 11); pdf.cell(0, 8, txt=f"Gesamtinvestition: {inv:,.2f} EUR Netto", ln=True); pdf.ln(5)
+   pdf.set_font("Arial", '', 10); pdf.cell(0, 6, txt=f"Amortisation: ca. {a_m:.1f} Monate", ln=True)
    return pdf.output(dest='S').encode('latin-1')
 
-# NEUER BAIN MARIE PDF GENERATOR (OPTISCH ANGEPASST)
-def create_pdf_bain_marie(kundenname, anzahl, verfahren, ersparnis, gesamt_ersparnis, prozent):
-   pdf = FPDF()
-   pdf.add_page()
-   
-   logo = find_logo()
-   if logo:
-       try:
-           pdf.image(logo, x=10, y=10, h=18)
-           pdf.ln(24)
-           logo = True
-       except:
-           logo = None
-   if not logo:
-       pdf.set_font("Arial", 'BI', 24)
-       pdf.set_text_color(232, 71, 28)
-       pdf.cell(55, 12, txt="Rieber", ln=False)
-       pdf.set_font("Arial", '', 9)
-       pdf.set_text_color(170, 170, 170)
-       pdf.cell(0, 12, txt="M E T A   c o o k i n g", ln=True)
+def create_pdf_bain_marie(k_name, anzahl, verfahren, ersparnis, gesamt):
+   pdf = FPDF(); pdf.add_page(); pdf.set_font("Arial", 'B', 16)
+   pdf.cell(0, 10, txt="Rieber - Wirtschaftlichkeitsanalyse Bain Marie", ln=True, align="C"); pdf.ln(10)
+   pdf.set_font("Arial", '', 12); pdf.cell(0, 10, txt=f"Kunde: {k_name}", ln=True)
+   pdf.cell(0, 10, txt=f"System: {verfahren} | Einsparung: {gesamt:,.2f} EUR / Jahr", ln=True)
+   return pdf.output(dest='S').encode('latin-1')
 
-   pdf.set_draw_color(232, 71, 28)
-   pdf.set_line_width(0.7)
-   pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-   pdf.ln(4)
-
-   pdf.set_font("Arial", 'B', 13)
-   pdf.set_text_color(30, 30, 30)
-   pdf.cell(0, 8, txt="Wirtschaftlichkeitsanalyse - Bain Marie", ln=True)
-   pdf.ln(3)
-    
-   pdf.set_font("Arial", 'B', 11)
-   pdf.cell(0, 7, txt=f"Kunde: {kundenname}", ln=True)
-   
-   pdf.set_font("Arial", '', 11)
-   pdf.set_text_color(80, 80, 80)
-   pdf.cell(0, 7, txt=f"Zu ersetzende Wasser-Bain-Maries: {anzahl}", ln=True)
-   pdf.cell(0, 7, txt=f"Gewaehltes Rieber System: {verfahren}", ln=True)
-   pdf.ln(6)
-    
-   pdf.set_font("Arial", 'B', 11)
-   pdf.set_text_color(30, 30, 30)
-   pdf.cell(0, 8, txt="Berechnung der Kosteneinsparung:", ln=True)
-   pdf.set_font("Arial", '', 11)
-   pdf.set_text_color(60, 60, 60)
-   pdf.cell(0, 6, txt=f"  Einsparung pro Becken: {ersparnis:,.2f} EUR / Jahr", ln=True)
-   pdf.cell(0, 6, txt=f"  Reduktion des Stromverbrauchs: {prozent}%", ln=True)
-   pdf.ln(5)
-    
-   pdf.set_font("Arial", 'B', 12)
-   pdf.set_fill_color(232, 71, 28)
-   pdf.set_text_color(255, 255, 255)
-   pdf.cell(0, 11, txt=f"  Gesamtersparnis: {gesamt_ersparnis:,.2f} EUR / Jahr", ln=True, fill=True)
-   
-   pdf.ln(10)
-   pdf.set_font("Arial", 'I', 9)
-   pdf.set_text_color(120, 120, 120)
-   pdf.multi_cell(0, 5, txt="Berechnungsgrundlage: 0,372 Euro/kWh bei 365 Betriebstagen pro Jahr. Referenzwert: Klassisches Wasser-Bain-Marie (1,2 kW).")
-    
-   return pdf.output(dest="S").encode("latin-1")
-
+def create_pdf_rolling_buffet(glob, modules):
+   pdf = FPDF(orientation="L"); pdf.add_page(); pdf.set_font("Arial", 'B', 16)
+   pdf.cell(0, 10, txt="Rieber Rolling Buffet - Anlagenplanung", ln=True, align='C'); pdf.ln(10)
+   pdf.set_font("Arial", '', 10); pdf.cell(0, 6, txt=f"Mobilitaet: {glob['mobilitaet']} | Abdeckung: {glob['abdeckung']}", ln=True)
+   pdf.ln(5); pdf.set_font("Arial", 'B', 11); pdf.cell(0, 8, txt="Konfigurierte Module:", ln=True)
+   pdf.set_font("Arial", '', 9)
+   for i, m in enumerate(modules):
+      l = m['sonder_laenge'] if m['laenge_typ'] == "SONDERBAU" else int(m['laenge_typ'].split()[0])
+      pdf.cell(0, 6, txt=f"M{i+1}: {m['typ']} ({l}mm) | Technik: {m['technik']} | Gaesteseite: {m['peripherie']}", ln=True)
+   return pdf.output(dest='S').encode('latin-1')
 
 # ==========================================
-# 3. APP SETUP & LOGIN
+# 3. APP SETUP & AUTH
 # ==========================================
 
-st.set_page_config(
-   page_title="Rieber Solutionfinder", page_icon="🍽️", layout="wide",
-   menu_items={'Get Help': None, 'Report a bug': None, 'About': '© Rieber GmbH'}
-)
+st.set_page_config(page_title="Rieber Solutionfinder", page_icon="🍽️", layout="wide")
 inject_apple_icon()
 
-if "authenticated" not in st.session_state:
-   st.session_state.authenticated = False
-
-if 'page' not in st.session_state:
-    st.session_state.page = 'home'
+if "authenticated" not in st.session_state: st.session_state.authenticated = False
+if "page" not in st.session_state: st.session_state.page = "home"
+if 'buffet_modules' not in st.session_state: st.session_state.buffet_modules = []
 
 if not st.session_state.authenticated:
-   logo_html = get_logo_html("80px")
-   login_card = (
-       '<style>' + CSS + '</style>'
-       '<div style="max-width:360px;margin:60px auto 0;background:white;padding:36px;'
-       'border-radius:20px;box-shadow:0 4px 20px rgba(0,0,0,0.1);text-align:center;">'
-       + logo_html +
-       '<p style="font-size:1em;font-weight:700;color:#333;letter-spacing:0.1em;'
-       'text-transform:uppercase;margin-top:16px;padding-top:14px;'
-       'border-top:1px solid #f0f0f0;">Solutionfinder</p>'
-       '</div>'
-   )
-   st.markdown(login_card, unsafe_allow_html=True)
+   set_design()
    _, mid, _ = st.columns([1, 1.5, 1])
    with mid:
-       pw = st.text_input("pw", type="password", label_visibility="collapsed",
-                          placeholder="Passwort eingeben …")
+       pw = st.text_input("Passwort", type="password", placeholder="Passwort eingeben …", label_visibility="collapsed")
        if st.button("Anmelden", use_container_width=True):
-           if pw == "Rieber":
-               st.session_state.authenticated = True
-               st.rerun()
-           else:
-               st.error("Falsches Passwort.")
+           if pw == "Rieber": st.session_state.authenticated = True; st.rerun()
+           else: st.error("Falsches Passwort.")
    st.stop()
 
-
 # ==========================================
-# 4. NAVIGATION & ROUTING
+# 4. NAVIGATION (HOME)
 # ==========================================
 
-# --- STARTSEITE (WEICHE) ---
-if st.session_state.page == 'home':
+if st.session_state.page == "home":
     set_design()
-    st.markdown('<div class="eingabe-box" style="text-align: center;">', unsafe_allow_html=True)
-    st.markdown('<p class="section-label" style="font-size: 1.2em; margin-bottom: 20px;">Bitte wählen Sie ein Tool:</p>', unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("🍽️ Bedarfsanalyse (Solutionfinder)"):
-            st.session_state.page = 'solutionfinder'
-            st.rerun()
-        st.write("")
-        if st.button("⚡ Bain Marie Ersparnis-Berechnung"):
-            st.session_state.page = 'ersparnis'
-            st.rerun()
+    st.markdown('<div class="eingabe-box" style="text-align:center;">', unsafe_allow_html=True)
+    st.markdown('<p class="section-label" style="font-size:1.1em;">Zentrale Werkzeugauswahl</p>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button("📊 Bedarfsanalyse\n(Solutionfinder)"): st.session_state.page = "solutionfinder"; st.rerun()
+    with c2:
+        if st.button("⚡ Bain Marie\nErsparnis-Rechner"): st.session_state.page = "ersparnis"; st.rerun()
+    with c3:
+        if st.button("🍱 Rolling Buffet\nAnlagenplanung"): st.session_state.page = "rolling"; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
+# ==========================================
+# 5. TOOL: SOLUTIONFINDER (ORIGINAL CODE)
+# ==========================================
 
-# --- ORIGINAL SOLUTIONFINDER ---
-elif st.session_state.page == 'solutionfinder':
+elif st.session_state.page == "solutionfinder":
+    if st.sidebar.button("← Zurück zum Hauptmenü"): st.session_state.page = "home"; st.rerun()
     set_design()
-    c_nav1, c_nav2 = st.columns([1, 4])
-    with c_nav1:
-        if st.button("← Zurück zum Menü"):
-            st.session_state.page = 'home'
-            st.rerun()
-            
-    # --- EINGABE ---
     st.markdown('<div class="eingabe-box">', unsafe_allow_html=True)
     kunde = st.text_input("Kundenname", placeholder="z. B. Muster GmbH")
     n_loc = st.number_input("Anzahl Standorte", min_value=1, value=1)
-    total_p = 0
-    loc_reports = []
-
+    total_p, loc_reports = 0, []
     for i in range(int(n_loc)):
        c1, c2 = st.columns(2)
        with c1: name = st.text_input(f"Name Standort {i+1}", value=f"Standort {i+1}")
        with c2: count = st.number_input(f"Teilnehmer Standort {i+1}", min_value=1, value=50)
-       total_p += count
-       loc_reports.append((name, count))
-
-    st.markdown("<hr style='border:none;border-top:1px solid #f0f0f0;margin:16px 0;'>",
-               unsafe_allow_html=True)
-
+       total_p += count; loc_reports.append((name, count))
+    st.markdown("<hr style='border:none;border-top:1px solid #f0f0f0;margin:16px 0;'>", unsafe_allow_html=True)
     k1, k2, k3 = st.columns(3)
     with k1:
        v_sys = st.selectbox("Verfahren", ["Cook & Chill", "Cook & Hold"])
@@ -372,141 +223,104 @@ elif st.session_state.page == 'solutionfinder':
        p_adj = st.number_input("Projekt Zu/Abschlag (%)", value=0.0)
        einweg = st.number_input("Einweg €/Portion", value=0.35)
     st.markdown('</div>', unsafe_allow_html=True)
-
-    # --- LOGIK ---
     tp_m = "thermoport 1000K" if v_sys == "Cook & Chill" else "thermoport 1000KB 4.0"
     tp_lp = 920.0 if v_sys == "Cook & Chill" else 1380.0
-    g_map = {"Kita": 280, "Schule": 360, "Altenheim": 435, "Betrieb": 430}
-    g_p = g_map[bereich]
-
+    g_p = {"Kita": 280, "Schule": 360, "Altenheim": 435, "Betrieb": 430}[bereich]
     t_tp, t_gn, t_rp = 0, 0, 0
     for _, c in loc_reports:
        gn_loc = math.ceil(((g_p * c) / 1000) / 5)
-       gn_f = math.ceil(gn_loc * (1 + puf))
-       tp_f = math.ceil(gn_f / 5)
-       t_tp += tp_f
-       t_gn += gn_f
-       t_rp += math.ceil(tp_f / 2)
-
+       gn_f = math.ceil(gn_loc * (1 + puf)); tp_f = math.ceil(gn_f / 5)
+       t_tp += tp_f; t_gn += gn_f; t_rp += math.ceil(tp_f / 2)
     rab = 0.3 if gruppe == "Fachhandel" else (0.4 if gruppe == "Großkunde" else 0.0)
-
-    def calc_final_netto(lp, r_base, adjustment):
-       return round(lp * (1 - r_base) * (1 + (adjustment / 100)), 2)
-
-    n_tp = calc_final_netto(tp_lp, rab, p_adj)
-    n_gn = calc_final_netto(42.0, rab, p_adj)
-    n_dk = calc_final_netto(22.0, rab, p_adj)
-    n_rp = calc_final_netto(310.0, rab, p_adj)
-
+    n_tp = round(tp_lp * (1 - rab) * (1 + (p_adj / 100)), 2)
+    n_gn = round(42.0 * (1 - rab) * (1 + (p_adj / 100)), 2)
+    n_dk = round(22.0 * (1 - rab) * (1 + (p_adj / 100)), 2)
+    n_rp = round(310.0 * (1 - rab) * (1 + (p_adj / 100)), 2)
     inv = (t_tp * n_tp) + (t_gn * (n_gn + n_dk)) + (t_rp * n_rp)
     roi_j = einweg * total_p * tage * 52
     amo = (inv / (einweg * total_p)) / (tage * 4.33) if total_p > 0 and einweg > 0 else 0
-    pla = total_p * 0.03 * tage * 52
-    co2 = pla * 3.5
-
-    # --- OUTPUT ---
-    st.markdown('<p class="section-label">Bedarf &amp; Investition</p>', unsafe_allow_html=True)
+    pla = total_p * 0.03 * tage * 52; co2 = pla * 3.5
+    st.markdown('<p class="section-label">Ergebnis</p>', unsafe_allow_html=True)
     r1, r2, r3, r4 = st.columns(4)
-    r1.markdown(
-       f'<div class="result-card"><p class="metric-title">{tp_m}</p>'
-       f'<p class="metric-value">{t_tp}</p>'
-       f'<p class="metric-price">à {n_tp:.2f} €</p></div>',
-       unsafe_allow_html=True)
-    r2.markdown(
-       f'<div class="result-card"><p class="metric-title">GN 1/1 65mm</p>'
-       f'<p class="metric-value">{t_gn}</p>'
-       f'<p class="metric-price">à {n_gn:.2f} €</p></div>',
-       unsafe_allow_html=True)
-    r3.markdown(
-       f'<div class="result-card"><p class="metric-title">Steckdeckel</p>'
-       f'<p class="metric-value">{t_gn}</p>'
-       f'<p class="metric-price">à {n_dk:.2f} €</p></div>',
-       unsafe_allow_html=True)
-    r4.markdown(
-       f'<div class="result-card"><p class="metric-title">Rolliport</p>'
-       f'<p class="metric-value">{t_rp}</p>'
-       f'<p class="metric-price">à {n_rp:.2f} €</p></div>',
-       unsafe_allow_html=True)
+    r1.markdown(f'<div class="result-card"><p class="metric-title">{tp_m}</p><p class="metric-value">{t_tp}</p></div>', unsafe_allow_html=True)
+    r2.markdown(f'<div class="result-card"><p class="metric-title">GN 1/1 65mm</p><p class="metric-value">{t_gn}</p></div>', unsafe_allow_html=True)
+    r3.markdown(f'<div class="result-card"><p class="metric-title">Steckdeckel</p><p class="metric-value">{t_gn}</p></div>', unsafe_allow_html=True)
+    r4.markdown(f'<div class="result-card"><p class="metric-title">Rolliport</p><p class="metric-value">{t_rp}</p></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="total-card"><p class="total-value">{inv:,.2f} € Netto</p></div>', unsafe_allow_html=True)
+    pdf_b = create_pdf_solutionfinder(v_sys, bereich, komp, total_p, tage, loc_reports, tp_m, t_tp, t_gn, t_rp, n_tp, n_gn, n_dk, n_rp, inv, roi_j, amo, pla, co2, kunde)
+    st.download_button("Bedarfsanalyse als PDF speichern", data=pdf_b, file_name="Rieber_Bedarfsanalyse.pdf", mime="application/pdf")
 
-    st.markdown(
-       f'<div class="total-card"><p class="total-label">Gesamtinvestition</p>'
-       f'<p class="total-value">{inv:,.2f} € Netto</p></div>',
-       unsafe_allow_html=True)
+# ==========================================
+# 6. TOOL: BAIN MARIE ERSPARNIS
+# ==========================================
 
-    st.markdown('<p class="section-label">ROI &amp; Nachhaltigkeit</p>', unsafe_allow_html=True)
-    o1, o2, o3, o4 = st.columns(4)
-    o1.markdown(
-       f'<div class="roi-card"><div class="card-icon">♻️</div>'
-       f'<p class="metric-title">Einweg / Jahr</p>'
-       f'<p class="metric-value" style="color:#d9534f;">{roi_j:,.0f} €</p></div>',
-       unsafe_allow_html=True)
-    o2.markdown(
-       f'<div class="roi-card"><div class="card-icon">🪙</div>'
-       f'<p class="metric-title">Amortisation</p>'
-       f'<p class="metric-value">{amo:.1f} <span style="font-size:.45em;color:#888;font-weight:600;">Mon.</span></p></div>',
-       unsafe_allow_html=True)
-    o3.markdown(
-       f'<div class="esg-card"><div class="card-icon">🥤</div>'
-       f'<p class="metric-title">Plastik gespart</p>'
-       f'<p class="metric-value" style="color:#2a9d8f;">{pla:,.0f} <span style="font-size:.45em;color:#888;font-weight:600;">kg/J.</span></p></div>',
-       unsafe_allow_html=True)
-    o4.markdown(
-       f'<div class="esg-card"><div class="card-icon">🌫️</div>'
-       f'<p class="metric-title">CO₂ reduziert</p>'
-       f'<p class="metric-value" style="color:#2a9d8f;">{co2:,.0f} <span style="font-size:.45em;color:#888;font-weight:600;">kg/J.</span></p></div>',
-       unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    pdf_b = create_pdf(v_sys, bereich, komp, total_p, tage, loc_reports, tp_m, t_tp, t_gn, t_rp,
-                      n_tp, n_gn, n_dk, n_rp, inv, roi_j, amo, pla, co2, kunde)
-    st.download_button("Bedarfsanalyse als PDF speichern", data=pdf_b,
-                      file_name="Rieber_Bedarfsanalyse.pdf", mime="application/pdf")
-
-# --- NEUER BAIN MARIE RECHNER ---
-elif st.session_state.page == 'ersparnis':
-    set_design()
-    
-    LOGIK_DATEN_BM = {
-        "Trocken Bain Marie": {"ersparnis": 490.34, "prozent": 81},
-        "Varithek 800": {"ersparnis": 496.06, "prozent": 82},
-        "EST Infrarot": {"ersparnis": 515.96, "prozent": 85}
-    }
-    
-    c_nav1, c_nav2 = st.columns([1, 4])
-    with c_nav1:
-        if st.button("← Zurück zum Menü"):
-            st.session_state.page = 'home'
-            st.rerun()
-
-    st.markdown('<p class="section-label">Bain Marie Ersparnis-Berechnung</p>', unsafe_allow_html=True)
-    
+elif st.session_state.page == "ersparnis":
+    if st.sidebar.button("← Zurück zum Hauptmenü"): st.session_state.page = "home"; st.rerun()
+    set_design("Ersparnis-Rechner")
+    LOGIK_BM = {"Trocken Bain Marie": 490.34, "Varithek 800": 496.06, "EST Infrarot": 515.96}
     st.markdown('<div class="eingabe-box">', unsafe_allow_html=True)
-    k_name = st.text_input("Kundenname", placeholder="z. B. Muster GmbH")
-    anzahl = st.number_input("Anzahl zu ersetzender Wasser-Bain-Maries", min_value=1, value=1)
-    system = st.selectbox("Auswahl neue Rieber Technik", options=list(LOGIK_DATEN_BM.keys()))
+    k_name = st.text_input("Kundenname")
+    anzahl = st.number_input("Anzahl Becken", min_value=1, value=1)
+    verfahren = st.selectbox("Neue Technik", list(LOGIK_BM.keys()))
+    if st.button("Berechnen"):
+        gesamt = anzahl * LOGIK_BM[verfahren]
+        st.markdown(f'<div class="total-card"><p class="total-value">+ {gesamt:,.2f} € / Jahr</p></div>', unsafe_allow_html=True)
+        pdf_bm = create_pdf_bain_marie(k_name, anzahl, verfahren, LOGIK_BM[verfahren], gesamt)
+        st.download_button("PDF speichern", data=pdf_bm, file_name="Rieber_BainMarie.pdf")
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    _, col_btn, _ = st.columns([1, 2, 1])
-    with col_btn:
-        berechnen_click = st.button("Ersparnis berechnen")
-        
-    if berechnen_click:
-        daten = LOGIK_DATEN_BM[system]
-        gesamt = anzahl * daten["ersparnis"]
-        
-        st.markdown(
-            f'<div class="total-card" style="margin-top: 30px;">'
-            f'<p class="total-label">Ergebnis für {k_name if k_name else "Kunde"}</p>'
-            f'<p class="total-value">+ {gesamt:,.2f} € / Jahr</p>'
-            f'<p style="margin-top: 15px; font-weight:600; font-size: 1.1em;">Stromreduktion: {daten["prozent"]}%</p>'
-            f'</div>',
-            unsafe_allow_html=True
-        )
-        
-        pdf_data_bm = create_pdf_bain_marie(k_name if k_name else 'Kunde', anzahl, system, daten["ersparnis"], gesamt, daten["prozent"])
-        st.download_button(
-            label="Bain Marie Berechnung als PDF speichern",
-            data=pdf_data_bm,
-            file_name=f"Rieber_Bain_Marie_Ersparnis_{k_name if k_name else 'Kunde'}.pdf",
-            mime="application/pdf"
-        )
+
+# ==========================================
+# 7. TOOL: ROLLING BUFFET (NEU)
+# ==========================================
+
+elif st.session_state.page == "rolling":
+    if st.sidebar.button("← Zurück zum Hauptmenü"): st.session_state.page = "home"; st.rerun()
+    set_design("Rolling Buffet")
+    st.markdown('<div class="eingabe-box">', unsafe_allow_html=True)
+    st.markdown('<p class="section-label">Schritt 1: Globales Setup</p>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    with c1: 
+        mob = st.selectbox("Mobilitaet", ["Fahrbar (Standard)", "Fahrbar mit abnehmbarer Sockelblende", "Stationär"])
+        auf = st.selectbox("Aufstellung", ["Freistehend", "Wandstehend", "Solo (Insel)"])
+    with c2: 
+        abd = st.selectbox("Abdeckung", ["Edelstahl", "Granit", "Kunststein"])
+        abd_f = st.text_input("Farbe Abdeckung") if abd != "Edelstahl" else ""
+    with c3: 
+        des = st.selectbox("Design", ["Standard (Schwarz/Grau)", "Sonderfarbe"])
+        des_f = st.text_input("Farbcode") if des == "Sonderfarbe" else ""
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="eingabe-box">', unsafe_allow_html=True)
+    st.markdown('<p class="section-label">Schritt 2: Module</p>', unsafe_allow_html=True)
+    for i, m in enumerate(st.session_state.buffet_modules):
+        with st.container():
+            col_m1, col_m2, col_m3, col_m4 = st.columns([2,2,2,1])
+            m["typ"] = col_m1.selectbox("Typ", ["Warmbuffet", "Kaltbuffet", "Front-Cooking", "Neutral", "Kasse"], key=f"t{m['id']}")
+            m["laenge_typ"] = col_m2.selectbox("Laenge", ["1270 mm", "1770 mm", "2270 mm", "SONDERBAU"], key=f"l{m['id']}")
+            if m["laenge_typ"] == "SONDERBAU": m["sonder_laenge"] = col_m2.number_input("mm", min_value=400, key=f"s{m['id']}")
+            m["peripherie"] = col_m3.selectbox("Gaesteseite", ["Keine", "Tablettrutsche", "Verbreiterte Abdeckung"], key=f"p{m['id']}")
+            if col_m4.button("🗑️", key=f"d{m['id']}"): 
+                st.session_state.buffet_modules.pop(i); st.rerun()
+            with st.expander("Details Technik & Unterbau"):
+                tc1, tc2 = st.columns(2)
+                m["technik"] = tc1.selectbox("Technik", ["Standard", "Varithek Ceran", "Varithek Infrarot", "Kühlwanne"], key=f"tc{m['id']}")
+                m["unterbau"] = tc2.selectbox("Unterbau", ["Offen", "Flügeltüren", "Gekühlt", "Gewärmt"], key=f"uc{m['id']}")
+    if st.button("➕ Modul hinzufügen"): 
+        st.session_state.buffet_modules.append({"id":str(uuid.uuid4()), "typ":"Warmbuffet", "laenge_typ":"1770 mm", "sonder_laenge":1500, "peripherie":"Keine", "technik":"Standard", "unterbau":"Offen"}); st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    if st.session_state.buffet_modules:
+        st.markdown('<div class="eingabe-box">', unsafe_allow_html=True)
+        st.markdown('<p class="section-label">Draufsicht Skizze</p>', unsafe_allow_html=True)
+        plan_html = '<div class="plan-container">'
+        for m in st.session_state.buffet_modules:
+            real_l = m['sonder_laenge'] if m['laenge_typ'] == "SONDERBAU" else int(m['laenge_typ'].split()[0])
+            bg = {"Warmbuffet":"#d9534f","Kaltbuffet":"#5bc0de","Front-Cooking":"#f0ad4e"}.get(m['typ'], "#999")
+            plan_html += f'<div class="plan-module" style="min-width:{real_l/12}px; background:{bg};">M<br>{real_l}mm'
+            if m["peripherie"] == "Tablettrutsche": plan_html += '<div class="plan-rutsche"></div>'
+            elif m["peripherie"] == "Verbreiterte Abdeckung": plan_html += '<div class="plan-abdeckung"></div>'
+            plan_html += '</div>'
+        st.markdown(plan_html + '</div>', unsafe_allow_html=True)
+        pdf_rb = create_pdf_rolling_buffet({"mobilitaet":mob, "abdeckung":abd}, st.session_state.buffet_modules)
+        st.download_button("Anlagenplanung als PDF speichern", data=pdf_rb, file_name="Rieber_RollingBuffet.pdf")
+        st.markdown('</div>', unsafe_allow_html=True)
