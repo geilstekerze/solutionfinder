@@ -147,6 +147,11 @@ def create_pdf_bain_marie(k_name, anzahl, verfahren, ersparnis, gesamt):
 def create_pdf_rolling_buffet(glob, modules):
    pdf = FPDF(orientation="L"); pdf.add_page(); pdf.set_font("Arial", 'B', 16)
    pdf.cell(0, 10, txt="Rieber Rolling Buffet - Anlagenplanung", ln=True, align='C'); pdf.ln(10)
+   
+   if glob.get("kunde"):
+       pdf.set_font("Arial", 'B', 12)
+       pdf.cell(0, 8, txt=f"Kunde: {glob['kunde']}", ln=True)
+       
    pdf.set_font("Arial", '', 10); pdf.cell(0, 6, txt=f"Mobilitaet: {glob['mobilitaet']} | Abdeckung: {glob['abdeckung']}", ln=True)
    pdf.ln(5); pdf.set_font("Arial", 'B', 11); pdf.cell(0, 8, txt="Konfigurierte Module:", ln=True)
    pdf.set_font("Arial", '', 9)
@@ -238,89 +243,4 @@ elif st.session_state.page == "solutionfinder":
     n_rp = round(310.0 * (1 - rab) * (1 + (p_adj / 100)), 2)
     inv = (t_tp * n_tp) + (t_gn * (n_gn + n_dk)) + (t_rp * n_rp)
     roi_j = einweg * total_p * tage * 52
-    amo = (inv / (einweg * total_p)) / (tage * 4.33) if total_p > 0 and einweg > 0 else 0
-    pla = total_p * 0.03 * tage * 52; co2 = pla * 3.5
-    st.markdown('<p class="section-label">Ergebnis</p>', unsafe_allow_html=True)
-    r1, r2, r3, r4 = st.columns(4)
-    r1.markdown(f'<div class="result-card"><p class="metric-title">{tp_m}</p><p class="metric-value">{t_tp}</p></div>', unsafe_allow_html=True)
-    r2.markdown(f'<div class="result-card"><p class="metric-title">GN 1/1 65mm</p><p class="metric-value">{t_gn}</p></div>', unsafe_allow_html=True)
-    r3.markdown(f'<div class="result-card"><p class="metric-title">Steckdeckel</p><p class="metric-value">{t_gn}</p></div>', unsafe_allow_html=True)
-    r4.markdown(f'<div class="result-card"><p class="metric-title">Rolliport</p><p class="metric-value">{t_rp}</p></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="total-card"><p class="total-value">{inv:,.2f} € Netto</p></div>', unsafe_allow_html=True)
-    pdf_b = create_pdf_solutionfinder(v_sys, bereich, komp, total_p, tage, loc_reports, tp_m, t_tp, t_gn, t_rp, n_tp, n_gn, n_dk, n_rp, inv, roi_j, amo, pla, co2, kunde)
-    st.download_button("Bedarfsanalyse als PDF speichern", data=pdf_b, file_name="Rieber_Bedarfsanalyse.pdf", mime="application/pdf")
-
-# ==========================================
-# 6. TOOL: BAIN MARIE ERSPARNIS
-# ==========================================
-
-elif st.session_state.page == "ersparnis":
-    if st.sidebar.button("← Zurück zum Hauptmenü"): st.session_state.page = "home"; st.rerun()
-    set_design("Ersparnis-Rechner")
-    LOGIK_BM = {"Trocken Bain Marie": 490.34, "Varithek 800": 496.06, "EST Infrarot": 515.96}
-    st.markdown('<div class="eingabe-box">', unsafe_allow_html=True)
-    k_name = st.text_input("Kundenname")
-    anzahl = st.number_input("Anzahl Becken", min_value=1, value=1)
-    verfahren = st.selectbox("Neue Technik", list(LOGIK_BM.keys()))
-    if st.button("Berechnen"):
-        gesamt = anzahl * LOGIK_BM[verfahren]
-        st.markdown(f'<div class="total-card"><p class="total-value">+ {gesamt:,.2f} € / Jahr</p></div>', unsafe_allow_html=True)
-        pdf_bm = create_pdf_bain_marie(k_name, anzahl, verfahren, LOGIK_BM[verfahren], gesamt)
-        st.download_button("PDF speichern", data=pdf_bm, file_name="Rieber_BainMarie.pdf")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# ==========================================
-# 7. TOOL: ROLLING BUFFET (NEU)
-# ==========================================
-
-elif st.session_state.page == "rolling":
-    if st.sidebar.button("← Zurück zum Hauptmenü"): st.session_state.page = "home"; st.rerun()
-    set_design("Rolling Buffet")
-    st.markdown('<div class="eingabe-box">', unsafe_allow_html=True)
-    st.markdown('<p class="section-label">Schritt 1: Globales Setup</p>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    with c1: 
-        mob = st.selectbox("Mobilitaet", ["Fahrbar (Standard)", "Fahrbar mit abnehmbarer Sockelblende", "Stationär"])
-        auf = st.selectbox("Aufstellung", ["Freistehend", "Wandstehend", "Solo (Insel)"])
-    with c2: 
-        abd = st.selectbox("Abdeckung", ["Edelstahl", "Granit", "Kunststein"])
-        abd_f = st.text_input("Farbe Abdeckung") if abd != "Edelstahl" else ""
-    with c3: 
-        des = st.selectbox("Design", ["Standard (Schwarz/Grau)", "Sonderfarbe"])
-        des_f = st.text_input("Farbcode") if des == "Sonderfarbe" else ""
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="eingabe-box">', unsafe_allow_html=True)
-    st.markdown('<p class="section-label">Schritt 2: Module</p>', unsafe_allow_html=True)
-    for i, m in enumerate(st.session_state.buffet_modules):
-        with st.container():
-            col_m1, col_m2, col_m3, col_m4 = st.columns([2,2,2,1])
-            m["typ"] = col_m1.selectbox("Typ", ["Warmbuffet", "Kaltbuffet", "Front-Cooking", "Neutral", "Kasse"], key=f"t{m['id']}")
-            m["laenge_typ"] = col_m2.selectbox("Laenge", ["1270 mm", "1770 mm", "2270 mm", "SONDERBAU"], key=f"l{m['id']}")
-            if m["laenge_typ"] == "SONDERBAU": m["sonder_laenge"] = col_m2.number_input("mm", min_value=400, key=f"s{m['id']}")
-            m["peripherie"] = col_m3.selectbox("Gaesteseite", ["Keine", "Tablettrutsche", "Verbreiterte Abdeckung"], key=f"p{m['id']}")
-            if col_m4.button("🗑️", key=f"d{m['id']}"): 
-                st.session_state.buffet_modules.pop(i); st.rerun()
-            with st.expander("Details Technik & Unterbau"):
-                tc1, tc2 = st.columns(2)
-                m["technik"] = tc1.selectbox("Technik", ["Standard", "Varithek Ceran", "Varithek Infrarot", "Kühlwanne"], key=f"tc{m['id']}")
-                m["unterbau"] = tc2.selectbox("Unterbau", ["Offen", "Flügeltüren", "Gekühlt", "Gewärmt"], key=f"uc{m['id']}")
-    if st.button("➕ Modul hinzufügen"): 
-        st.session_state.buffet_modules.append({"id":str(uuid.uuid4()), "typ":"Warmbuffet", "laenge_typ":"1770 mm", "sonder_laenge":1500, "peripherie":"Keine", "technik":"Standard", "unterbau":"Offen"}); st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    if st.session_state.buffet_modules:
-        st.markdown('<div class="eingabe-box">', unsafe_allow_html=True)
-        st.markdown('<p class="section-label">Draufsicht Skizze</p>', unsafe_allow_html=True)
-        plan_html = '<div class="plan-container">'
-        for m in st.session_state.buffet_modules:
-            real_l = m['sonder_laenge'] if m['laenge_typ'] == "SONDERBAU" else int(m['laenge_typ'].split()[0])
-            bg = {"Warmbuffet":"#d9534f","Kaltbuffet":"#5bc0de","Front-Cooking":"#f0ad4e"}.get(m['typ'], "#999")
-            plan_html += f'<div class="plan-module" style="min-width:{real_l/12}px; background:{bg};">M<br>{real_l}mm'
-            if m["peripherie"] == "Tablettrutsche": plan_html += '<div class="plan-rutsche"></div>'
-            elif m["peripherie"] == "Verbreiterte Abdeckung": plan_html += '<div class="plan-abdeckung"></div>'
-            plan_html += '</div>'
-        st.markdown(plan_html + '</div>', unsafe_allow_html=True)
-        pdf_rb = create_pdf_rolling_buffet({"mobilitaet":mob, "abdeckung":abd}, st.session_state.buffet_modules)
-        st.download_button("Anlagenplanung als PDF speichern", data=pdf_rb, file_name="Rieber_RollingBuffet.pdf")
-        st.markdown('</div>', unsafe_allow_html=True)
+    amo = (
