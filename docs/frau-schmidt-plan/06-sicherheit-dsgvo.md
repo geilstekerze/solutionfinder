@@ -20,7 +20,7 @@ Für **unsere Kunden** sind wir Auftragsverarbeiter: Standard-AVV (Muster) wird 
 1. **Transport:** TLS ≥ 1.2 überall (Caddy erzwingt), WSS für alle Media-Streams, HSTS.
 2. **At Rest:** Hetzner-Volume mit LUKS-Verschlüsselung für Postgres-Daten + Uploads; Backups verschlüsselt (age) in Hetzner Storage Box (anderer Standort).
 3. **Anwendungsgeheimnisse:** sops/age (Dok. 01); Rotation dokumentiert (Runbook); `gitleaks` in CI.
-4. **Integrations-Credentials der Mandanten:** AES-256-GCM-verschlüsselt in `integrations.credentials_enc`; Schlüssel (`FS_CRED_KEY`) nur als ENV auf dem Server, Rotationsprozedur im Runbook (Umschlüsselung per Admin-Kommando).
+4. **Integrations-Credentials der Mandanten:** AES-256-GCM-verschlüsselt in `integrations.credentials_enc`; Schlüssel (`FS_CRED_KEY`) nur als ENV auf dem Server, Rotationsprozedur im Runbook (Umschlüsselung per Admin-Kommando). **Nonce-Pflicht:** Für jeden Verschlüsselungsvorgang wird ein frischer, kryptografisch zufälliger 96-Bit-Nonce erzeugt (`os.urandom(12)`) und dem Chiffretext vorangestellt gespeichert (`nonce || ciphertext || tag`); Nonce-Wiederverwendung unter demselben Schlüssel bricht GCM vollständig und ist daher per Unit-Test abgesichert (zwei Verschlüsselungen desselben Klartexts ergeben unterschiedliche Ausgaben).
 5. **Passwörter:** argon2id; Login-Rate-Limit; Passwort-Reset nur via E-Mail-Token.
 6. **Zugriff:** SSH key-only + IP-Allowlist; personalisierte Admin-Accounts; Admin-UI mit 2FA (TOTP); jede Admin-Aktion im `audit_log`.
 7. **Mandantentrennung:** RLS (Dok. 02) + Isolationstests in CI + getrennte Upload-Verzeichnisse pro Tenant.

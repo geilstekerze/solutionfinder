@@ -64,7 +64,7 @@ Sentry fängt alle unbehandelten Exceptions aller Services (Release-Tagging = gi
 
 ## 6. Backups & Desaster-Recovery
 
-- Postgres: `pg_dump` täglich + WAL-Archivierung (kontinuierlich, `wal-g`) auf Hetzner Storage Box (verschlüsselt). RPO ≤ 5 min, RTO ≤ 60 min.
+- Postgres, zweigleisig: (a) **PITR-Strategie (primär):** physisches Base-Backup täglich via `wal-g backup-push` + kontinuierliche WAL-Archivierung (`wal-g`) auf Hetzner Storage Box (verschlüsselt) – WAL-Replay setzt zwingend auf dem physischen Base-Backup auf, nicht auf einem Dump. (b) **Logischer Dump (sekundär):** täglicher `pg_dump` (Custom-Format) als portables, unabhängig wiederherstellbares Zweitbackup. RPO ≤ 5 min (via WAL), RTO ≤ 60 min.
 - Uploads-Verzeichnis: täglicher inkrementeller Sync (restic, verschlüsselt).
 - **Restore-Test ist Pflicht:** monatlicher automatisierter Job stellt Backup auf Staging wieder her und führt Smoke-Tests aus; ohne bestandenen Restore-Test gilt das Backup als nicht existent.
 - Server-Totalausfall-Runbook: neuen Hetzner-Server aus Cloud-Init-Snapshot provisionieren, Compose + Secrets deployen, Restore, Twilio-Webhook-URLs zeigen auf DNS-Namen (nur DNS-Umschwenk nötig).

@@ -10,6 +10,10 @@
 ## 2. Schema (verbindlich; Alembic-Migration in WP2)
 
 ```sql
+-- Erforderliche Erweiterungen (erste Migration, vor allen Tabellen)
+CREATE EXTENSION IF NOT EXISTS citext;
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- ===== Mandanten & Abo =====
 CREATE TABLE tenants (
     id              uuid PRIMARY KEY,
@@ -130,7 +134,15 @@ CREATE TABLE chunks (
     created_at   timestamptz NOT NULL DEFAULT now(),
     UNIQUE (document_id, seq)
 );
--- HNSW-Index; Filterung auf tenant_id geschieht IMMER zusätzlich per WHERE + RLS
+-- HNSW-Index; Filterung auf tenant_id geschieht IMMER zusätzlich per WHERE + RLS.
+-- ACHTUNG Post-Filtering-Problem: Ein globaler HNSW-Index liefert die global
+-- nächsten Nachbarn, die anschließende tenant_id-Filterung kann den Recall
+-- drücken. Gegenmaßnahme (Pflicht): pgvector >= 0.8 einsetzen und bei
+-- Retrieval-Queries iterative Index-Scans aktivieren:
+--   SET LOCAL hnsw.iterative_scan = relaxed_order;
+-- Der Recall@3-Eval (Dok. 04, Abschn. 6) misst genau diese Konfiguration.
+-- Skalierungspfad bei großen Beständen: Partitionierung nach tenant_id
+-- (Index je Partition) bzw. Qdrant-Migration (Dok. 04, Abschn. 7).
 CREATE INDEX chunks_embedding_idx ON chunks
     USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX chunks_tenant_idx ON chunks (tenant_id);
@@ -221,8 +233,10 @@ Für **jede** Tabelle mit `tenant_id` (außer `tenants` selbst, s. u.):
 ALTER TABLE calls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE calls FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON calls
-    USING (tenant_id = current_setting('app.tenant_id')::uuid);
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
 ```
+
+**Wichtig:** `current_setting` immer mit `missing_ok = true` (zweiter Parameter) aufrufen: Ist der Parameter nicht gesetzt, liefert die Funktion `NULL` statt eines Fehlers – der Vergleich ergibt `NULL` → keine Zeile sichtbar. So bleibt das Verhalten „ohne Kontext ist nichts lesbar" ein sauberes Fail-Closed ohne Query-Abbrüche (z. B. auf frischen Pool-Verbindungen).
 
 - `tenants`: RLS mit Policy `id = current_setting('app.tenant_id')::uuid`; zusätzlich Policy für den System-Kontext (`current_setting('app.context') = 'system'`) für Provisioning/Nummern-Routing (nur von klar gekennzeichneten Systemcodepfaden gesetzt, z. B. „Rufnummer → Tenant auflösen" beim Anrufeingang).
 - Der DB-Zugriffs-Layer in `fs_shared.db` stellt genau zwei Einstiege bereit:

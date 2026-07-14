@@ -107,7 +107,7 @@ Alle Versionen werden in `pyproject.toml`/`uv.lock` bzw. Compose-Dateien exakt g
 | Pydantic | 2.x |
 | websockets, arq, structlog, stripe, twilio, httpx | aktuellste stabile, gepinnt |
 | PostgreSQL | 16 (Docker-Image `postgres:16.<aktuell>` mit Digest-Pin) |
-| pgvector | 0.7+ (Image `pgvector/pgvector:pg16`, Digest-Pin) |
+| pgvector | 0.8+ (Image `pgvector/pgvector:pg16`, Digest-Pin) – 0.8 ist Pflicht wegen iterativer Index-Scans bei Tenant-Filterung (Dok. 02/04) |
 | Redis | 7.2 (Digest-Pin) |
 | n8n | aktuelle LTS, Digest-Pin |
 | Caddy | 2.x, Digest-Pin |

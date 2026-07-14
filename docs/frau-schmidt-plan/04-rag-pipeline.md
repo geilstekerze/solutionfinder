@@ -28,7 +28,7 @@ Regeln:
 ## 3. Retrieval (Bibliothek `fs_shared/rag`, aufgerufen vom Tool-Endpunkt)
 
 1. Query-Embedding (gleiche Modell-/Dimensionskonfiguration wie Ingestion; Konfigurationsdrift wird beim Start geprüft: gespeicherte Dimension == konfigurierte Dimension, sonst Startabbruch).
-2. Vektorsuche: `ORDER BY embedding <=> :query_vec LIMIT 12` **immer** innerhalb `tenant_session` (RLS) + explizitem `WHERE tenant_id = :tid` (Defense in Depth).
+2. Vektorsuche: `ORDER BY embedding <=> :query_vec LIMIT 12` **immer** innerhalb `tenant_session` (RLS) + explizitem `WHERE tenant_id = :tid` (Defense in Depth). Wegen des Post-Filtering-Problems globaler HNSW-Indizes wird pro Retrieval-Query `SET LOCAL hnsw.iterative_scan = relaxed_order` gesetzt (pgvector ≥ 0.8, siehe Dok. 02) – sonst kann der Recall bei Tenant-Filterung einbrechen.
 3. Schwellwert: Cosine-Distanz > 0,55 wird verworfen. Bleibt nichts übrig → `{"found": false}`.
 4. Re-Ranking im MVP: einfacher MMR (Maximal Marginal Relevance) über die 12 Kandidaten → Top 3.
 5. Antwort an das Tool: max. 3 Passagen à ≤ 512 Token, je mit `filename` – die Assistentin darf Quellen nennen („laut unserer Preisliste…").

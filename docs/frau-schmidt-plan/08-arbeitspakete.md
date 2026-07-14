@@ -15,7 +15,7 @@
 
 ## WP1 – Infrastruktur Staging (Server, TLS, Observability, Secrets)
 **Voraussetzungen:** Hetzner-Zugang, Domain/Subdomains (`staging.…`, `api.…`), sops/age-Schlüssel.
-**Aufgaben:** Staging-Server provisionieren (Cloud-Init-Skript versioniert); Compose-Stacks base/staging; Caddy mit TLS; Prometheus+Grafana+Loki+Promtail; Sentry-Anbindung; sops-Secrets-Workflow; Deploy-Pipeline (`deploy.yml`) bis Staging inkl. `migrate`-Job-Mechanik; Backup-Grundgerüst (pg_dump-Cron + restic).
+**Aufgaben:** Staging-Server provisionieren (Cloud-Init-Skript versioniert); Compose-Stacks base/staging; Caddy mit TLS; Prometheus+Grafana+Loki+Promtail; Sentry-Anbindung; sops-Secrets-Workflow; Deploy-Pipeline (`deploy.yml`) bis Staging inkl. `migrate`-Job-Mechanik; Backup-Grundgerüst (wal-g Base-Backup + WAL-Archivierung, täglicher pg_dump als Zweitbackup, restic für Uploads).
 **Abnahme:** `git push main` deployt automatisch auf Staging; `https://staging.…/healthz` über TLS erreichbar; Logs aller Services in Loki sichtbar; Test-Exception erscheint in Sentry; Grafana zeigt Basis-Metriken; Secrets liegen nirgends im Klartext im Repo (gitleaks grün).
 
 ## WP2 – Datenmodell & Mandanten-Framework
