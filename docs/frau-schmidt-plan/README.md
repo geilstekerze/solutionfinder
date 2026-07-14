@@ -1,8 +1,8 @@
 # Umsetzungsplan „Frau Schmidt" – DSGVO-konforme KI-Telefonassistenz für KMU
 
-**Version:** 1.0 · **Stand:** 2026-07-14 · **Status:** Verbindliche Umsetzungsgrundlage
+**Version:** 1.1 · **Stand:** 2026-07-15 · **Status:** Optimierte verbindliche Umsetzungsgrundlage
 
-Dieser Plan ist so geschrieben, dass ein KI-Modell (oder ein Entwicklungsteam) ihn **ohne Rückfragen deterministisch umsetzen kann**. Alle Entscheidungen sind getroffen, alle Schnittstellen spezifiziert, alle Arbeitspakete haben testbare Abnahmekriterien. Oberste Prioritäten: **Stabilität, Zuverlässigkeit, Null-Fehler-Toleranz im Kernpfad (Telefonat)**.
+Dieser Plan ist so geschrieben, dass ein KI-Modell oder Entwicklungsteam ihn ohne unnötige Rückfragen umsetzen kann. Alle wesentlichen Entscheidungen, Schnittstellen und Abnahmekriterien sind festgelegt. Oberste Prioritäten sind **kontrollierte Degradation, Datenintegrität, Sicherheit, messbare Gesprächsqualität und wirtschaftlicher Betrieb**.
 
 ---
 
@@ -18,9 +18,10 @@ Dieser Plan ist so geschrieben, dass ein KI-Modell (oder ein Entwicklungsteam) i
 | 05 | [`05-integrationen-onboarding.md`](05-integrationen-onboarding.md) | Stripe, Provisioning, n8n, Kalender, E-Mail/WhatsApp-Tickets |
 | 06 | [`06-sicherheit-dsgvo.md`](06-sicherheit-dsgvo.md) | TOMs, Verschlüsselung, Einwilligung, Löschkonzept, Auftragsverarbeiter |
 | 07 | [`07-qualitaet-betrieb.md`](07-qualitaet-betrieb.md) | Teststrategie, CI/CD, Monitoring, SLOs, Runbooks, Rollback |
-| 08 | [`08-arbeitspakete.md`](08-arbeitspakete.md) | **Sequenzielle Arbeitspakete WP0–WP11 mit Abnahmekriterien** |
+| 08 | [`08-arbeitspakete.md`](08-arbeitspakete.md) | Sequenzielle Arbeitspakete WP0–WP11 mit Abnahmekriterien |
+| 09 | [`09-mvp-optimierung-produktbetrieb.md`](09-mvp-optimierung-produktbetrieb.md) | **Verbindliche MVP-Verschlankung, Produktökonomie, Kostenlimits und Sicherheitspräzisierungen** |
 
-**Regel:** Bei Widerspruch zwischen Dokumenten gilt die Reihenfolge: `08-arbeitspakete.md` > Fachdokument (01–07) > dieses README. Existiert zu einer Detailfrage keine Festlegung, gilt Abschnitt 5 („Default-Entscheidungsregeln").
+**Regel:** Bei Widerspruch zwischen Dokumenten gilt die Reihenfolge: `09-mvp-optimierung-produktbetrieb.md` > `08-arbeitspakete.md` > Fachdokument 01–07 > dieses README. Existiert zu einer Detailfrage keine Festlegung, gilt Abschnitt 5 („Default-Entscheidungsregeln").
 
 ---
 
@@ -28,99 +29,108 @@ Dieser Plan ist so geschrieben, dass ein KI-Modell (oder ein Entwicklungsteam) i
 
 „Frau Schmidt" ist eine mandantenfähige SaaS-Telefonassistentin für KMU:
 
-- **Level 1 – Intelligenter Anrufbeantworter:** Anrufannahme, Anliegen-Erfassung, strukturiertes Ticket per E-Mail/WhatsApp an das Team.
-- **Level 2 – Vorzimmerdame (MVP):** zusätzlich FAQ-Beantwortung aus Kundendokumenten (RAG), Terminbuchung in Echtzeit, Anrufweiterleitung.
-- **Level 3/4 – Chef-Sekretärin / Fach-Agenten:** CRM-Anbindung, Long-Term-Memory, Fach-Workflows (nach MVP, hier nur als Erweiterungspfad berücksichtigt).
+- **Level 1 – Intelligenter Anrufbeantworter:** Anrufannahme, Anliegen-Erfassung, strukturiertes Ticket per E-Mail an das Team.
+- **Level 2 – Vorzimmerdame:** zusätzlich FAQ-Beantwortung aus Kundendokumenten, Terminbuchung und Anrufweiterleitung.
+- **Level 3/4 – Chef-Sekretärin / Fach-Agenten:** CRM-Anbindung, Long-Term-Memory und Fach-Workflows nach validiertem MVP.
 
-Kaufabschluss und Bereitstellung laufen vollautomatisch: Stripe-Zahlung → automatisches Provisioning → Kunde ist in < 10 Minuten live.
+Die erste verkaufbare Version priorisiert Level 1 plus eine schlanke Wissensbasis. Vollautomatisches Checkout- und Self-Service-Provisioning folgt erst nach bestandenem technischen und wirtschaftlichen Gate aus Dokument 09.
 
-**Dieser Plan liefert Level 1 + Level 2 produktionsreif inkl. automatisiertem Onboarding.** Level 3/4 sind architektonisch vorbereitet (Erweiterungspunkte sind markiert), werden aber nicht implementiert.
+Der vollständige Zielplan liefert Level 1 + Level 2 inklusive automatisiertem Onboarding. Level 3/4 sind nur architektonisch vorbereitet und werden nicht vor realem Kundenbedarf implementiert.
 
 ---
 
 ## 3. Verbindliche Architektur-Entscheidungen (ADRs)
 
-Jede Entscheidung ist final. Das umsetzende Modell darf sie nicht ändern, ohne dass der Auftraggeber es explizit verlangt.
+Jede Entscheidung ist verbindlich. Änderungen erfolgen nur über eine dokumentierte neue ADR.
 
 ### ADR-1: Sprache & Laufzeit
-**Python 3.12** für alle Backend-Services (Voice-Orchestrator, API, Ingestion-Worker). Ein einziges Ökosystem minimiert Fehlerquellen. Kein Node.js im Backend. Portal-Frontend: serverseitig gerendertes **FastAPI + Jinja2 + HTMX** (kein SPA-Framework) – weniger bewegliche Teile, kein separates Build-Toolchain-Risiko.
+**Python 3.12** für alle Backend-Prozesse. Ein einziges Ökosystem minimiert Fehlerquellen. Portal-Frontend: serverseitig gerendertes **FastAPI + Jinja2 + HTMX**; kein SPA-Framework im MVP.
 
 ### ADR-2: Telefonie-Anbindung
-**Twilio Programmable Voice mit Media Streams** (bidirektionales Audio über WebSocket, G.711 μ-law, 8 kHz) als primärer Weg. Begründung: dokumentiertes, erprobtes Streaming-Interface; kein eigener SIP-Stack (Asterisk/FreeSWITCH entfällt → massiv weniger Fehlerpotenzial). Deutsche Rufnummern über Twilio, Media-Region `de1` (Frankfurt), Auftragsverarbeitungsvertrag + EU-SCCs abschließen (siehe Dok. 06).
-Die Telefonie ist hinter einem **Adapter-Interface** (`TelephonyAdapter`) gekapselt; ein späterer Wechsel auf sipgate/eigenen SIP-Trunk (volle Datenresidenz) ist als Phase-2-Härtung vorgesehen, ohne den Kern zu ändern.
+**Twilio Programmable Voice mit Media Streams** als primärer Weg. Deutsche Rufnummern, Media-Region `de1`, erforderliche Datenschutzverträge und Transferprüfung. Die Telefonie liegt hinter einem `TelephonyAdapter`.
 
 ### ADR-3: Sprach-KI
-**Azure OpenAI Realtime API** (Modell-Deployment `gpt-realtime`), Region **Sweden Central** (EU). Audio-zu-Audio (kein STT→LLM→TTS-Umweg im Gesprächspfad). Audioformat Ende-zu-Ende `g711_ulaw` (Twilio-nativ, keine Transcodierung → weniger Latenz, weniger Fehler). Function-Calling für Terminbuchung, Ticket-Erfassung, Weiterleitung, Wissensabfrage.
+**Azure OpenAI Realtime API**, Region Sweden Central. Audio-zu-Audio im Gesprächspfad, `g711_ulaw`, Function-Calling für klar begrenzte Tools.
 
 ### ADR-4: Datenhaltung
-**PostgreSQL 16 + pgvector** als einziges Datensystem für MVP (relationale Daten UND Vektoren). Begründung Null-Fehler-Toleranz: ein System weniger (kein Qdrant), transaktionale Konsistenz zwischen Dokument-Metadaten und Vektoren, Mandantentrennung über **Row-Level-Security** in einer Datenbank statt über zwei Systeme hinweg. Qdrant ist als dokumentierter Migrationspfad ab > 200 Mandanten vorgesehen (Dok. 04, Abschn. 7). Zusätzlich **Redis 7** ausschließlich für flüchtigen Call-State und Rate-Limiting (Verlust von Redis-Daten darf nie Datenverlust bedeuten).
+**PostgreSQL 16 + pgvector** als primäres Datensystem. **Redis 7** nur für flüchtigen Zustand, Queue und Rate-Limiting, sobald der jeweilige Ausbauzustand es benötigt. Verlust von Redis-Daten darf keinen dauerhaften Datenverlust verursachen.
 
 ### ADR-5: Orchestrierung
-**n8n (self-hosted)** ausschließlich für asynchrone Post-Call- und Onboarding-Automatisierung. **Harte Regel: Der Live-Gesprächspfad hat keine Abhängigkeit zu n8n.** Fällt n8n aus, funktionieren Telefonate vollständig weiter; Events werden in einer Outbox-Tabelle gepuffert und nachgeholt.
+**n8n self-hosted** ausschließlich für optionale asynchrone Post-Call- und Kundenautomatisierungen. Der Live-Gesprächspfad ist nie von n8n abhängig. Die erste Ticket-E-Mail wird aus einem eigenen Worker versendet.
 
 ### ADR-6: Infrastruktur & Deployment
-**Hetzner Cloud** (EU, bestehende Ressourcen), **Docker Compose** mit Healthchecks, **Caddy 2** als Reverse Proxy (automatisches TLS). Kein Kubernetes im MVP (Komplexität ohne Bedarf). Deployments ausschließlich über CI-Pipeline (GitHub Actions → SSH), niemals manuell. Zwei Umgebungen: `staging` und `production` auf getrennten Servern.
+**Hetzner Cloud**, Docker Compose, Caddy 2. Kein Kubernetes im MVP. Codebasis modular, aber zunächst wenige Prozesse gemäß Dokument 09. Staging und Production bleiben getrennt.
 
 ### ADR-7: Zahlungen & Provisioning
-**Stripe Checkout + Billing** (Subscriptions), Webhook-getriebenes Provisioning mit **Idempotenz-Keys** (jedes Stripe-Event wird genau einmal verarbeitet, Wiederholungen sind wirkungslos). Provisioning ist eine idempotente State-Machine in der API (nicht in n8n), n8n übernimmt nur Benachrichtigungen.
+**Stripe Checkout + Billing**. Webhooks werden idempotent und gegen verspätete beziehungsweise ungeordnete Zustellung verarbeitet. Automatisches Provisioning startet erst nach bestandenem Gate A.
 
 ### ADR-8: Beobachtbarkeit
-Strukturierte JSON-Logs (ein Schema für alle Services), **Prometheus + Grafana + Loki** (self-hosted, EU) und **Sentry (EU-Region)** für Fehler-Tracking. Jeder Anruf erhält eine `call_id`, die durch alle Systeme propagiert wird (Logs, Metriken, DB, n8n).
+Strukturierte JSON-Logs, Sentry und Kostenmetriken sind ab Produktbeweis Pflicht. Prometheus/Grafana/Loki werden spätestens vor dem Verkaufs-MVP vollständig aktiviert. Jeder Anruf erhält eine durchgängige `call_id`.
 
 ### ADR-9: Kein Audio-Mitschnitt per Default
-Es wird standardmäßig **kein Gesprächsaudio gespeichert**, nur Transkripte + strukturierte Ergebnisse. Audio-Aufzeichnung ist ein Opt-in-Feature pro Mandant mit dokumentierter Rechtsgrundlage (Dok. 06).
+Standardmäßig wird kein Gesprächsaudio gespeichert, nur erforderliche Transkripte und strukturierte Ergebnisse. Aufzeichnung ist ein gesondertes Opt-in mit geprüfter Rechtsgrundlage.
+
+### ADR-10: Produktbeweis vor Plattformausbau
+Vor RAG-Vollausbau, mehreren Kalendern, n8n-Automatisierungen, Stripe-Provisioning und horizontaler Skalierung muss der vertikale End-to-End-Anruf das technische und wirtschaftliche Gate aus Dokument 09 bestehen. Funktionen ohne belegten Kundennutzen werden nicht vorsorglich gebaut.
 
 ---
 
-## 4. Null-Fehler-Strategie (gilt für jedes Arbeitspaket)
+## 4. Strategie für kontrollierte Degradation
 
 1. **Typisierung erzwungen:** `mypy --strict` und `ruff` laufen in CI; Merge nur bei 0 Fehlern.
-2. **Testpflicht:** Kernlogik ≥ 90 % Branch-Coverage; jedes Arbeitspaket definiert konkrete Tests, die grün sein müssen (Dok. 07 + 08).
-3. **Der Gesprächspfad degradiert, er fällt nie hart aus:** Jede externe Abhängigkeit (Realtime API, Kalender, DB) hat definiertes Fallback-Verhalten (Dok. 03, Abschn. 8). Schlimmster Fall ist immer: freundliche Ansage + Voicemail-Aufnahme + asynchrones Ticket – niemals ein stummer oder abgebrochener Anruf.
-4. **Idempotenz überall:** Webhooks (Stripe, Twilio, n8n) sind wiederholbar ohne Doppelwirkung; Provisioning ist eine wiederaufsetzbare State-Machine.
-5. **Keine stillen Fehler:** Jede abgefangene Exception erzeugt ein Sentry-Event + strukturiertes Log; leere `except:`-Blöcke sind verboten (Lint-Regel).
-6. **Migrations-Disziplin:** Schemaänderungen nur über Alembic-Migrationen, nie manuell; jede Migration hat einen getesteten Downgrade-Pfad.
-7. **Staging-Gate:** Jedes Release durchläuft Staging inkl. automatisiertem Test-Telefonat, bevor Production deployt wird (Dok. 07, Abschn. 5).
-8. **Canary-Mandant:** In Production existiert ein interner Test-Mandant; nach jedem Deploy läuft ein echter Testanruf gegen diesen Mandanten (Smoke-Test), sonst automatischer Rollback.
+2. **Testpflicht:** Kernlogik ≥ 90 % Branch-Coverage; jedes Arbeitspaket definiert konkrete Tests.
+3. **Der Gesprächspfad degradiert kontrolliert:** Jede externe Abhängigkeit hat ein definiertes Fallback-Verhalten. Kein einzelner Ausfall darf einen Anruf stumm oder unkontrolliert enden lassen.
+4. **Idempotenz:** Webhooks, Outbox-Verarbeitung und Provisioning sind ohne Doppelwirkung wiederholbar.
+5. **Keine stillen Fehler:** Jede abgefangene relevante Exception erzeugt ein strukturiertes Log und bei Betriebsrelevanz ein Sentry-Event.
+6. **Migrations-Disziplin:** Schemaänderungen ausschließlich über Alembic und mit getesteter Wiederherstellung.
+7. **Staging-Gate:** Jedes Release durchläuft Staging und einen automatisierten Testanruf.
+8. **Canary-Mandant:** Vor Production-Freigabe wird ein echter Testanruf gegen einen internen Mandanten ausgeführt.
+9. **Kosten-Gate:** Jeder Anruf und Mandant besitzt messbare und durchsetzbare Nutzungs- und Kostenlimits.
 
 ---
 
 ## 5. Default-Entscheidungsregeln für das umsetzende Modell
 
-Wenn eine Detailfrage in den Dokumenten nicht geregelt ist:
+Wenn eine Detailfrage nicht geregelt ist:
 
-1. Wähle die Option mit **weniger externen Abhängigkeiten**.
-2. Wähle die Option, die bei Teilausfall **degradiert statt abbricht**.
-3. Wähle die **explizite** Variante (Konfiguration, Typen, Schemas) statt Konvention/Magie.
-4. Schreibe erst den Test, dann die Implementierung, wenn Verhalten unklar erscheint.
-5. Dokumentiere die getroffene Entscheidung als Kommentar im relevanten ADR-Abschnitt (neue ADR-Nummer, Datei `docs/adr-log.md` im Zielrepo).
+1. Wähle die Option mit weniger externen Abhängigkeiten.
+2. Wähle kontrollierte Degradation statt hartem Abbruch.
+3. Wähle die explizite Variante statt Konvention oder Magie.
+4. Wähle die kleinste Lösung, die das aktuelle Abnahmekriterium vollständig erfüllt.
+5. Schreibe erst den Test, wenn das Verhalten unklar ist.
+6. Dokumentiere neue Architekturentscheidungen im ADR-Log.
+7. Baue keine Erweiterung nur „für später", wenn ein Interface oder dokumentierter Migrationspfad genügt.
 
-**Verboten:** Platzhalter-Code („TODO: später implementieren"), auskommentierte Codeblöcke, hartcodierte Secrets, Abhängigkeiten ohne Versions-Pinning, `latest`-Docker-Tags.
+**Verboten:** Platzhalter-Code, auskommentierte Altimplementierungen, hartcodierte Secrets, ungebremste externe Kosten, Abhängigkeiten ohne Versions-Pinning und `latest`-Docker-Tags.
 
 ---
 
-## 6. Phasenmodell (Zuordnung zur Roadmap des Konzepts)
+## 6. Phasenmodell
 
-| Phase (Konzept) | Arbeitspakete (Dok. 08) | Ergebnis |
+| Phase | Arbeitspakete | Ergebnis / Gate |
 | :--- | :--- | :--- |
-| Phase 1 – Prototyping (Level-2-MVP) | WP0–WP4 | Latenzarmes Testgespräch über echte Rufnummer inkl. Barge-in |
-| Phase 2 – Infrastruktur & RAG | WP5–WP7 | Mandantengetrennte Wissensbasis + Terminbuchung + Tickets |
-| Phase 3 – Checkout & Onboarding | WP8–WP10 | Stripe → automatisches Provisioning → Kunde live < 10 min |
-| Phase 4 – Launch & Skalierung | WP11 | Lasttest, DSGVO-Abnahme, Go-Live unter promptwerker.de |
+| Phase 0 – Produktbeweis | WP0–WP4, gemäß Dok. 09 verschlankt | Echter End-to-End-Anruf mit Ticket-E-Mail und vollständigen Messwerten |
+| **Gate A** | 100 Pilot-/Testanrufe | Technische und wirtschaftliche Kriterien aus Dok. 09 bestanden |
+| Phase 1 – Pilot-MVP | WP5–WP7 reduziert | Markdown-Wissensbasis, Portal, belastbare Tickets, Cal.com |
+| Phase 2 – Verkaufs-MVP | WP8–WP10 | Checkout, Provisioning, Self-Service, Production |
+| Phase 3 – Härtung & Skalierung | WP11 nach realer Last | Security, Restore, Last und DSGVO-Abnahme |
 
-Die Arbeitspakete sind **strikt sequenziell** definiert (jedes WP baut auf dem vorherigen auf und endet mit einem überprüfbaren, deploybaren Zustand).
+Kein Arbeitspaket nach WP4 beginnt, bevor Gate A dokumentiert bestanden oder eine Abweichung ausdrücklich als ADR freigegeben wurde.
 
 ---
 
-## 7. Erfolgskriterien des Gesamtprojekts (Abnahme)
+## 7. Erfolgskriterien des Gesamtprojekts
 
-Das Projekt gilt als erfolgreich umgesetzt, wenn alle folgenden Punkte nachweisbar erfüllt sind:
+Das Projekt gilt als erfolgreich umgesetzt, wenn:
 
-1. Ein Anruf auf eine Mandanten-Rufnummer wird in **< 2 s** angenommen; die erste Antwort der Assistentin beginnt **< 1,5 s** nach Ende der Nutzeräußerung (P95, gemessen über Metriken aus Dok. 07).
-2. Barge-in (Anrufer unterbricht) stoppt die Sprachausgabe in **< 400 ms** (P95).
-3. FAQ-Antworten stammen nachweislich nur aus den Dokumenten des jeweiligen Mandanten (Isolationstest aus Dok. 04, Abschn. 6 besteht).
-4. Terminbuchung erzeugt einen realen Kalendereintrag und bestätigt ihn im Gespräch; Doppelbuchungen sind durch Verfügbarkeitsprüfung ausgeschlossen.
-5. Stripe-Testkauf → funktionsfähiger Mandant mit Rufnummer + Onboarding-E-Mail in **< 10 min** ohne manuellen Eingriff.
-6. Ausfall-Szenarien (Realtime API down, DB down, Kalender down, n8n down) führen zu definiertem Degradationsverhalten, nie zu stummen/abgebrochenen Anrufen (Chaos-Testplan Dok. 07, Abschn. 6).
-7. Alle CI-Gates grün: Lint, Typen, Tests, Coverage, Security-Scan, Staging-Smoke-Call.
-8. DSGVO-Checkliste aus Dok. 06 vollständig abgehakt (inkl. AVV-Kette, Löschkonzept, Verzeichnis von Verarbeitungstätigkeiten).
+1. Gate A aus Dokument 09 bestanden ist.
+2. Ein Anruf wird in < 2 s angenommen; Zielwert für erste Antwort P95 ≤ 1,5 s, Pilot-Freigabe spätestens bei P95 ≤ 2,0 s.
+3. Barge-in stoppt die Ausgabe zuverlässig; Zielwert P95 ≤ 400 ms.
+4. FAQ-Antworten stammen nur aus den Dokumenten des jeweiligen Mandanten.
+5. Terminbuchungen werden verifiziert und verhindern Doppelbestätigungen.
+6. Stripe-Testkauf erzeugt nach Freigabe der Automatisierungsphase einen funktionsfähigen Mandanten in < 10 min.
+7. Externe Ausfälle führen zu dokumentierter Degradation statt stummen oder unkontrollierten Abbrüchen.
+8. Kostenlimits, Missbrauchsschutz und Tarifkontingente funktionieren nachweisbar.
+9. Alle CI-, Security-, Restore- und Staging-Gates sind grün.
+10. Datenschutzunterlagen, Auftragsverarbeiterkette und Löschkonzept sind geprüft.
+11. Mindestens drei Pilotmandanten wurden isoliert und ohne Datenvermischung betrieben.
