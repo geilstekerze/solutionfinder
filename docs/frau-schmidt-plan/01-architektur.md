@@ -2,155 +2,190 @@
 
 ## 1. Gesamtbild
 
-```
-                       ┌────────────────────────── Hetzner Cloud (EU) ──────────────────────────┐
-                       │                                                                        │
- Anrufer ──PSTN──▶ Twilio (DE-Nr.,     ┌──────────────────────┐      ┌─────────────────────┐    │
-                   Media Region de1)   │  voice-orchestrator  │◀────▶│ Azure OpenAI        │    │
-                       │  Media Stream │  (Python, asyncio)   │  WS  │ Realtime API        │    │
-                       └──────WS──────▶│  - Call-StateMachine │      │ (Sweden Central)    │    │
-                                       │  - Audio-Bridge      │      └─────────────────────┘    │
-                                       │  - Tool-Dispatcher   │                                 │
-                                       └───────┬──────────────┘                                 │
-                                               │ SQL / Redis                                    │
-                       ┌───────────────────────┼──────────────────────────────┐                 │
-                       │                       ▼                              │                 │
-   Kunde (Browser) ──▶ Caddy 2 ──▶ ┌──────────────────┐   ┌───────────┐  ┌────────────┐        │
-   Stripe Webhooks ──▶ (TLS)       │ api (FastAPI)    │──▶│ Postgres  │  │ Redis 7    │        │
-   Twilio Webhooks ──▶             │ - Portal (HTMX)  │   │ 16 +      │  │ (flüchtig) │        │
-                                   │ - Provisioning   │   │ pgvector  │  └────────────┘        │
-                                   │ - Webhooks       │   └───────────┘                        │
-                                   └──────┬───────────┘        ▲                               │
-                                          │ Outbox-Events      │                               │
-                                          ▼                    │                               │
-                                   ┌──────────────┐   ┌────────┴─────────┐                     │
-                                   │ n8n          │   │ ingestion-worker │                     │
-                                   │ (Post-Call,  │   │ (Docs → Chunks   │                     │
-                                   │  Benachricht.)│  │  → Embeddings)   │                     │
-                                   └──────────────┘   └──────────────────┘                     │
-                                                                                                │
-                       Observability: Prometheus + Grafana + Loki + Sentry (EU)                 │
-                       └────────────────────────────────────────────────────────────────────────┘
+```text
+Anrufer ──PSTN──▶ Twilio (DE-Nr., Media Region de1)
+                         │ Media Stream (WSS)
+                         ▼
+                voice-orchestrator ──WS──▶ Azure OpenAI Realtime
+                         │
+                         │ signierte interne Tool-Aufrufe
+                         ▼
+                       app
+        (API, Portal, Webhooks, Tools, Provisioning)
+            │              │               │
+            ▼              ▼               ▼
+        PostgreSQL     Worker/Queue      optionale n8n-Flows
+        + pgvector     (gleiche Codebasis; erst nach Gate A)
+
+Edge/TLS: Caddy · Fehler: Sentry · Metriken: Prometheus/Grafana stufenweise
 ```
 
-## 2. Services (4 Deployment-Einheiten + Infrastruktur)
+Der Gesprächspfad besitzt genau eine synchrone interne Abhängigkeit: `voice-orchestrator → app`. n8n, E-Mail-Versand, Dokumenten-Ingestion und Zusammenfassungen laufen asynchron.
 
-| Service | Zweck | Technologie | Skalierung |
-| :--- | :--- | :--- | :--- |
-| `voice-orchestrator` | Nimmt Twilio-Media-Streams an, bridged Audio zur Realtime API, führt die Call-State-Machine und Tool-Aufrufe aus | Python 3.12, `websockets`, `asyncio` | horizontal (stateless bzgl. Persistenz; Call-State in Prozess + Redis) |
-| `api` | Kundenportal (HTMX), Admin, Stripe-/Twilio-Webhooks, Provisioning-State-Machine, interne Tool-Endpunkte für den Orchestrator | FastAPI, Uvicorn, Jinja2, HTMX | horizontal |
-| `ingestion-worker` | Verarbeitet hochgeladene Dokumente zu Chunks + Embeddings (Queue-basiert) | Python 3.12, `arq` (Redis-Queue) | horizontal |
-| `n8n` | Post-Call-Automatisierung, Onboarding-Benachrichtigungen, CRM-Sync (Level 3-Vorbereitung) | n8n (gepinnte LTS-Version) | 1 Instanz |
-| Infrastruktur | Postgres 16 + pgvector, Redis 7, Caddy 2, Prometheus, Grafana, Loki, Promtail | Docker Compose | vertikal |
+## 2. Deployment-Einheiten nach Reifegrad
 
-**Warum kein separater „RAG-Service":** Retrieval ist eine Bibliotheksfunktion (`packages/shared/rag`), aufgerufen von `api` (Tool-Endpunkt) – ein Netzwerk-Hop weniger im Gesprächspfad.
+Die fachlichen Module bleiben getrennt, werden aber nicht vorsorglich als viele eigenständige Dienste betrieben.
 
-## 3. Ziel-Repository-Struktur (neues Repo `frau-schmidt`)
+| Stufe | Prozesse/Container | Zweck |
+| :--- | :--- | :--- |
+| Produktbeweis | `app`, `voice-orchestrator` | vollständiger End-to-End-Anruf, direkte Ticket-E-Mail, Messwerte |
+| Pilot-MVP | zusätzlich `worker`, optional Redis | Ingestion, Outbox, Hintergrundjobs, Rate-Limiting |
+| Verkaufs-MVP | zusätzlich n8n und vollständiges Monitoring | Self-Service, optionale Automatisierungen, Betriebsdashboards |
+| Skalierung | mehrere Orchestratoren/Worker | horizontale Skalierung nach nachgewiesener Last |
 
-Das umsetzende Modell legt exakt diese Struktur an:
+`app` enthält zunächst FastAPI, Portal, Admin, Webhooks, Provisioning und interne Tools. `worker` importiert dieselben Pakete aus derselben Codebasis. Erst wenn unabhängige Skalierung oder Fehlerisolation messbar notwendig ist, werden Komponenten als eigene Deployments herausgelöst.
 
-```
+**Warum kein separater RAG-Service:** Retrieval bleibt eine Bibliotheksfunktion. Das spart einen Netzwerk-Hop und einen zusätzlichen Ausfallpunkt.
+
+**Warum n8n nicht im Kern-MVP:** Die erste Ticket-E-Mail wird aus der transaktionalen Outbox durch den eigenen Worker zugestellt. n8n ergänzt später optionale Kundenautomatisierungen, ist aber nie Voraussetzung für einen erfolgreichen Anruf.
+
+## 3. Ziel-Repository-Struktur
+
+```text
 frau-schmidt/
-├── pyproject.toml                  # uv-Workspace; ein Lockfile (uv.lock) für alles
+├── pyproject.toml                  # uv-Workspace; ein Lockfile
 ├── packages/
-│   └── shared/                     # importierbar als `fs_shared`
+│   └── shared/
 │       ├── fs_shared/
-│       │   ├── config.py           # Pydantic-Settings (Abschn. 5)
-│       │   ├── db/                 # SQLAlchemy-Modelle, Session, RLS-Helper
-│       │   ├── models/             # Pydantic-Domänenmodelle (Call, Ticket, …)
-│       │   ├── rag/                # Chunking, Embedding-Client, Retrieval
-│       │   ├── telephony/          # TelephonyAdapter-Interface + TwilioAdapter
-│       │   ├── realtime/           # Azure-Realtime-Client (WS, Session-Config)
-│       │   ├── telemetry/          # Logging (structlog), Metriken, Tracing-IDs
-│       │   └── outbox.py           # Transaktionale Outbox (Abschn. 6)
+│       │   ├── config.py
+│       │   ├── db/
+│       │   ├── models/
+│       │   ├── rag/
+│       │   ├── telephony/
+│       │   ├── realtime/
+│       │   ├── telemetry/
+│       │   ├── security/
+│       │   └── outbox.py
 │       └── tests/
 ├── services/
+│   ├── app/
+│   │   ├── app/
+│   │   └── tests/
 │   ├── voice_orchestrator/
-│   │   ├── app/                    # main.py, call_session.py, state_machine.py,
-│   │   │                           # audio_bridge.py, tool_dispatcher.py, fallback.py
+│   │   ├── app/
 │   │   └── tests/
-│   ├── api/
-│   │   ├── app/                    # main.py, routers/ (portal, webhooks_stripe,
-│   │   │                           # webhooks_twilio, tools, admin), provisioning/
-│   │   ├── templates/              # Jinja2 + HTMX
-│   │   └── tests/
-│   └── ingestion_worker/
-│       ├── app/                    # worker.py, pipeline.py
+│   └── worker/
+│       ├── app/
 │       └── tests/
-├── migrations/                     # Alembic (eine Historie für die gesamte DB)
+├── migrations/
 ├── infra/
 │   ├── compose/
-│   │   ├── docker-compose.base.yml
-│   │   ├── docker-compose.staging.yml
-│   │   └── docker-compose.production.yml
-│   ├── caddy/Caddyfile
-│   ├── grafana/                    # Dashboards als JSON (versioniert)
-│   ├── prometheus/prometheus.yml + alerts.yml
-│   └── scripts/                    # deploy.sh, backup.sh, restore_test.sh
-├── n8n/workflows/                  # exportierte Workflow-JSONs (versioniert)
-├── tests_e2e/                      # Ende-zu-Ende: Test-Call, Stripe-Testkauf
+│   ├── caddy/
+│   ├── grafana/
+│   ├── prometheus/
+│   └── scripts/
+├── n8n/workflows/                  # erst nach Gate A aktiv
+├── tests_e2e/
 ├── docs/
 │   ├── adr-log.md
+│   ├── abnahme/
 │   └── runbooks/
-└── .github/workflows/ci.yml + deploy.yml
+└── .github/workflows/
 ```
 
-## 4. Versions-Pinning (verbindlich, Stand Planerstellung)
+Die Paketgrenzen entsprechen den späteren Skalierungsgrenzen. Zusammenlegen im Betrieb bedeutet daher keine Vermischung der Fachlogik.
 
-Alle Versionen werden in `pyproject.toml`/`uv.lock` bzw. Compose-Dateien exakt gepinnt. Minor-Updates nur über eigene PRs mit grüner CI.
+## 4. Versions-Pinning
 
-| Komponente | Version/Vorgabe |
+Alle Abhängigkeiten und Images werden nach Auswahl exakt gepinnt. Updates erfolgen über eigene PRs mit grüner CI.
+
+| Komponente | Vorgabe |
 | :--- | :--- |
 | Python | 3.12.x |
-| FastAPI / Uvicorn | aktuellste zum Umsetzungszeitpunkt stabile Version, dann gepinnt |
-| SQLAlchemy / Alembic | 2.x / aktuellste stabile, gepinnt |
+| FastAPI / Uvicorn | stabile Version, exakt gepinnt |
+| SQLAlchemy / Alembic | 2.x / stabile Version, gepinnt |
 | Pydantic | 2.x |
-| websockets, arq, structlog, stripe, twilio, httpx | aktuellste stabile, gepinnt |
-| PostgreSQL | 16 (Docker-Image `postgres:16.<aktuell>` mit Digest-Pin) |
-| pgvector | 0.8+ (Image `pgvector/pgvector:pg16`, Digest-Pin) – 0.8 ist Pflicht wegen iterativer Index-Scans bei Tenant-Filterung (Dok. 02/04) |
-| Redis | 7.2 (Digest-Pin) |
-| n8n | aktuelle LTS, Digest-Pin |
-| Caddy | 2.x, Digest-Pin |
-| Azure OpenAI | Realtime-Deployment `gpt-realtime` (GA), Embeddings `text-embedding-3-large` (dimensions=1536), beide Region Sweden Central |
+| websockets, arq, structlog, stripe, twilio, httpx | stabile Versionen, gepinnt |
+| PostgreSQL | 16 mit Digest-Pin |
+| pgvector | 0.8+ mit Digest-Pin |
+| Redis | 7.2 mit Digest-Pin, erst ab tatsächlichem Bedarf verpflichtend |
+| n8n | stabile freigegebene Version mit Digest-Pin |
+| Caddy | 2.x mit Digest-Pin |
+| Azure OpenAI | freigegebenes Realtime-Deployment und Embedding-Deployment in EU-Region |
 
-**Regel:** Kein Docker-Tag `latest`; jedes Image mit `@sha256:`-Digest in Production-Compose.
+Kein Production-Image verwendet `latest`.
 
 ## 5. Konfigurationsmanagement
 
-- Eine einzige Settings-Klasse pro Service (`pydantic-settings`), Quelle: Environment-Variablen. **Beim Start werden alle Pflichtwerte validiert; fehlende Konfiguration = sofortiger Startabbruch mit klarer Fehlermeldung** (nie Laufzeitfehler später).
-- Secrets liegen ausschließlich in einer `.env.production` auf dem Server (Dateirechte `600`, Besitzer Deploy-User), verwaltet über `sops` + `age` im Repo (`infra/secrets/*.enc.env`). Klartext-Secrets im Repo sind verboten (CI-Gate: `gitleaks`).
-- Vollständige Variablenliste (Auszug, wird in WP1 finalisiert):
-  `DATABASE_URL`, `REDIS_URL`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_REALTIME_DEPLOYMENT`, `AZURE_EMBEDDING_DEPLOYMENT`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`, `PUBLIC_BASE_URL`, `SENTRY_DSN`, `ENVIRONMENT` (`staging`|`production`), `SMTP_*`.
+- Eine `pydantic-settings`-Klasse je Prozess; fehlende Pflichtkonfiguration beendet den Start mit klarer Fehlermeldung.
+- Secrets liegen verschlüsselt mit `sops` + `age`; Klartext-Secrets sind im Repo verboten.
+- Produktionsdateien besitzen minimale Dateirechte und einen dedizierten Deploy-User.
+- `gitleaks` läuft als CI-Gate.
+- Provider-, Tarif- und Kostenlimits sind Konfiguration, nicht hartcodierte Geschäftslogik.
+
+Pflichtwerte umfassen mindestens:
+
+`DATABASE_URL`, `PUBLIC_BASE_URL`, Azure-/Twilio-Zugangsdaten, Signaturschlüssel für interne Service-Tokens, `ENVIRONMENT`, Sentry, SMTP sowie Tariflimits (`MAX_CALL_SECONDS`, `MAX_CONCURRENT_CALLS_PER_TENANT`, `DAILY_MINUTE_LIMIT`, `MONTHLY_MINUTE_LIMIT`, `MONTHLY_COST_LIMIT`).
 
 ## 6. Interne Kommunikationsmuster
 
-1. **Orchestrator → api (Tools):** HTTP (localhost-Netz im Compose), Endpunkte `POST /internal/tools/{search_knowledge|book_appointment|create_ticket|transfer_call}`. Auth über internes Shared-Secret-Header (`X-Internal-Token`), Timeout 3 s, 1 Retry. Antwortschema strikt (Pydantic), damit die Realtime-Function-Calls deterministisch beantwortet werden.
-2. **api → n8n:** Transaktionale **Outbox-Tabelle** (`outbox_events`): Domänen-Events (`call.completed`, `tenant.provisioned`, `ticket.created`) werden in derselben DB-Transaktion wie die Datenänderung geschrieben. Ein Dispatcher-Task pusht sie an n8n-Webhooks (Retry mit Exponential Backoff, max. 24 h, danach Alert). → n8n-Ausfall verliert nie Events.
-3. **api → ingestion-worker:** `arq`-Job über Redis; Job-Payload enthält nur IDs (Daten kommen aus der DB), Jobs sind idempotent (Re-Run überschreibt Chunks desselben Dokuments atomar).
-4. **Kein Service ruft je direkt einen anderen im Gesprächs-Hotpath auf außer Orchestrator→api-Tools** (bewusst einziger synchroner Pfad, mit definiertem Fallback bei Timeout, siehe Dok. 03 Abschn. 8).
+### 6.1 Orchestrator → app
+
+Endpunkte:
+
+`POST /internal/tools/{search_knowledge|book_appointment|create_ticket|transfer_call}`
+
+Verbindliche Absicherung:
+
+1. Endpunkte sind nicht über Caddy öffentlich geroutet.
+2. Kommunikation läuft in einem isolierten Compose-Netz.
+3. Jeder Request trägt ein kurzlebiges signiertes Service-Token mit `iss`, `aud`, `iat`, `exp`, `jti`; Gültigkeit maximal 60 Sekunden.
+4. `jti`/Request-ID und Zeitfenster werden gegen Replay geprüft.
+5. Schlüsselrotation unterstützt überlappende aktive Schlüsselstände.
+6. Ab horizontaler Skalierung ist mTLS Pflicht.
+7. Tool-Antworten besitzen strikte Pydantic-Schemas, harte Timeouts und definierte Fallbacks.
+
+Ein dauerhaft gültiger statischer Shared-Secret-Header allein ist nicht zulässig.
+
+### 6.2 app → Worker/n8n
+
+Domänenänderung und Outbox-Event werden in derselben Datenbanktransaktion geschrieben. Der Worker verarbeitet E-Mail, Ingestion und Post-Call-Jobs idempotent. n8n erhält ausschließlich explizite, versionierte Events und hat keinen direkten Datenbankzugriff.
+
+### 6.3 Queue
+
+Im Produktbeweis darf der Worker per DB-Outbox pollen. Redis/arq wird eingeführt, sobald parallele Jobs oder Durchsatz dies rechtfertigen. Job-Payloads enthalten ausschließlich IDs; fachliche Daten werden unter Tenant-Kontext aus PostgreSQL gelesen.
 
 ## 7. Netzwerk & Deployment-Topologie
 
-- **Production-Server** (Hetzner, z. B. CCX33): alle Services via Compose; Postgres-Daten auf separatem Hetzner-Volume (verschlüsselt, siehe Dok. 06).
-- **Staging-Server** (kleiner, z. B. CPX31): identische Topologie, eigene Twilio-Testnummer, Stripe-Testmode, eigenes Azure-Deployment.
-- Eingehende Ports: nur 80/443 (Caddy) und 22 (SSH, Key-only, IP-beschränkt). Twilio-Media-Streams laufen als WSS über Caddy → `voice-orchestrator`.
-- Twilio-Webhook-Signaturvalidierung und Stripe-Signaturvalidierung sind Pflicht (Requests ohne gültige Signatur → 403 + Log).
-- Grafana/Prometheus nur über VPN/SSH-Tunnel oder Basic-Auth + IP-Allowlist erreichbar, nie öffentlich offen.
+- Staging und Production sind getrennt.
+- Eingehend offen: 80/443 sowie eingeschränktes SSH.
+- Twilio- und Stripe-Webhooks werden vor jeder Verarbeitung kryptografisch validiert.
+- Interne Tool- und n8n-Endpunkte werden nie öffentlich exponiert.
+- Datenbank und Redis sind nicht aus dem Internet erreichbar.
+- Monitoring-Oberflächen sind nur per VPN/SSH-Tunnel oder gleichwertiger starker Zugriffskontrolle erreichbar.
+- Servergröße wird anhand gemessener paralleler Calls, CPU, Speicher und Provider-Latenzen gewählt; keine überdimensionierte Startarchitektur ohne Messdaten.
 
-## 8. Latenzbudget Gesprächspfad (Grundlage für Dok. 03 und SLOs)
+## 8. Latenzbudget Gesprächspfad
 
-| Abschnitt | Budget (P95) |
+| Abschnitt | Ziel P95 |
 | :--- | :--- |
-| Twilio → Orchestrator (Frame-Weiterleitung) | ≤ 50 ms |
-| Orchestrator → Azure Realtime (WS, EU) | ≤ 150 ms RTT |
+| Twilio → Orchestrator | ≤ 50 ms |
+| Orchestrator → Realtime-API | ≤ 150 ms RTT |
 | Realtime-Antwortbeginn nach Sprechpausen-Erkennung | ≤ 900 ms |
-| Tool-Roundtrip (`search_knowledge`) inkl. Retrieval | ≤ 600 ms |
-| **Gesamt: Antwortbeginn nach Nutzeräußerung** | **≤ 1,5 s** |
+| Tool-Roundtrip Wissenssuche | ≤ 600 ms |
+| Gesamtziel Antwortbeginn | ≤ 1,5 s |
+| Gate-A-Freigabe während Pilot | ≤ 2,0 s |
 
-Jeder Abschnitt bekommt eine eigene Prometheus-Metrik (Histogramm), damit Budgetverletzungen lokalisierbar sind.
+Jeder Abschnitt erhält eine eigene Histogramm-Metrik. Optimierung erfolgt am gemessenen Engpass, nicht durch vorsorgliche zusätzliche Infrastruktur.
 
-## 9. Erweiterungspunkte für Level 3/4 (nur vorbereiten, nicht bauen)
+## 9. Kosten- und Kapazitätsbudgets
 
-- `TelephonyAdapter` (zweiter Provider), `CalendarAdapter` (bereits mehrere Backends, Dok. 05), `CrmAdapter` (Interface-Datei + No-Op-Implementierung anlegen).
-- Outbox-Events sind bereits das Integrationsereignis-Rückgrat für spätere Fach-Agenten.
-- Tabelle `memories` (Long-Term-Memory) wird im Schema angelegt, aber im MVP nicht beschrieben (Dok. 02).
+Jeder Anruf propagiert zusätzlich zur `call_id` eine Kosten- und Nutzungsdimension:
+
+- Telefonie-Minuten
+- Realtime-Minuten und geschätzte Modellkosten
+- Tool-Aufrufe
+- Nachrichtenkosten
+- Tenant, Tarif und Abrechnungsperiode
+
+Vor und während eines Gesprächs werden Parallelitäts-, Dauer-, Tages-, Monats- und Kostenlimits geprüft. Bei Anomalien degradiert der Tenant kontrolliert in einen sicheren Level-1-Modus. Bestehende Gespräche werden nicht hart getrennt, sondern zusammengefasst und kontrolliert beendet.
+
+## 10. Erweiterungspunkte
+
+- `TelephonyAdapter`: zweiter Provider erst nach Bedarf.
+- `CalendarAdapter`: Cal.com zuerst; weitere Adapter nach zahlendem Bedarf.
+- `CrmAdapter`: nur Interface bis zur ersten konkreten Integration.
+- Qdrant: erst nach nachgewiesenem pgvector-Limit.
+- Long-Term-Memory: nicht Bestandteil des MVP.
+
+Die verbindlichen Produkt- und Betriebsgrenzen stehen in Dokument 09.
